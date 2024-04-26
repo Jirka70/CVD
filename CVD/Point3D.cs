@@ -3,15 +3,15 @@ namespace VoronoiDiagrams
 {
    
     internal class Point3D {
-        public readonly int x;
-        public readonly int y;
-        public readonly int z;
+        public readonly double X;
+        public readonly double Y;
+        public readonly double Z;
 
-        public Point3D(int x, int y, int z)
+        public Point3D(double x, double y, double z)
         {
-            this.x = x;
-            this.y = y;
-            this.z = z;
+            X = x;
+            Y = y;
+            Z = z;
         }
     }
 }

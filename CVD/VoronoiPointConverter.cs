@@ -19,7 +19,7 @@
          */
         private static VoronoiPoint2D Convert3DPointTo2DPoint(Point3D point3D)
         {
-            return new(point3D.x, point3D.y);
+            return new(point3D.X, point3D.Y);
         }
     }
 }

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Drawing;
 using VoronoiDiagrams;
 
 namespace CVD
@@ -30,14 +32,68 @@ namespace CVD
        
             DelaunayTriangulation delaunayTriangulation = new();
             ISet<DelaunayTriangle> triangulation = delaunayTriangulation.CreateTriangulation(projectedPointCloud);
-//            DrawPoints(projectedPointCloud);
-            //DrawTriangles(triangulation);
             VoronoiDiagram voronoi = new();
             Dictionary<VoronoiPoint2D, VoronoiCell> voronoiDiagram = voronoi.CreateVoronoiDiagram(triangulation);
 
             voronoiDiagram = CenterVoronoiDiagram(voronoiDiagram, 42);
             DrawVoronoiCells(voronoiDiagram);
 
+
+            /*List <Point3D> randomPointCloud = Point3DGenerator.GenerateRandomPoints(POINT_CLOUD_SIZE, WIDTH, HEIGHT);
+
+            List<VoronoiPoint2D> points = new();
+            for (int i = 0; i < HEIGHT; i += 50)
+            {
+                for (int j = 0; j < WIDTH; j += 50)
+                {
+                    points.Add(new(j, i));
+                }
+            }
+            Func<double, double> slopeFunction = x => 2*x;
+            List<VoronoiPoint2D> transformedPoints = TransformPointsByLinearFunction(points, slopeFunction);
+            DelaunayTriangulation delaunayTriangulation = new();
+            delaunayTriangulation.CreateTriangulation(transformedPoints);
+            Draw3DPoints(points);  */ 
+        }
+
+        private void Draw3DPoints(List<VoronoiPoint2D> points)
+        {
+            Brush brush = new SolidBrush(Color.Black);
+            foreach (VoronoiPoint2D point in points)
+            {
+                Draw3DPoints(brush, point);
+            }
+        }
+
+        private void Draw3DPoints(Brush brush, VoronoiPoint2D point)
+        {
+            int pointWidth = 4;
+            int pointHeight = 4;
+            if (point.X > 0 && point.Y > 0)
+            {
+                graphicsContext.FillEllipse(brush, (int)point.X - pointWidth / 2, (int)point.Y - pointHeight / 2, pointWidth, pointHeight);
+            }
+        }
+
+        private List<VoronoiPoint2D> TransformPointsByLinearFunction(List<VoronoiPoint2D> points, Func<double, double> slopeFunction)
+        {
+            List<VoronoiPoint2D> transformedPoints = new();
+            
+            /*for (int i = 0; i < points.Count; i++)
+            {
+                VoronoiPoint2D currentPoint = points[i];
+
+                double x = slopeFunction(currentPoint.X);
+                double derivation = x / currentPoint.X;
+                x = currentPoint.X / derivation;
+                double y = currentPoint.Y;
+                double z = slopeFunction(currentPoint.X);
+
+                VoronoiPoint2D transformedPoint = new(x, y, z);
+                transformedPoints.Add(transformedPoint);
+            }*/
+
+            return transformedPoints;
         }
 
         private Dictionary<VoronoiPoint2D, VoronoiCell> CalculateVoronoiDiagram(List<VoronoiPoint2D> points)

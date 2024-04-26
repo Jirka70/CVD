@@ -9,8 +9,7 @@ namespace CVD
 
         public DelaunayTriangulation() {
             superDelaunayTriangle = new(new VoronoiPoint2D(BOUND / 2, -BOUND), new VoronoiPoint2D(-BOUND, BOUND),
-                new VoronoiPoint2D(BOUND, BOUND));
-            
+                new VoronoiPoint2D(BOUND, BOUND));   
         }
 
         public ISet<DelaunayTriangle> CreateTriangulation(List<VoronoiPoint2D> points)
@@ -96,7 +95,7 @@ namespace CVD
                 }
                 if (!IsEdgeSharedWithOtherBadTriangle(badTriangles, badTriangle, edge3))
                 {
-                    polygon.Add(edge3);
+                    polygon.Add(edge3); 
                 }
             }
 
