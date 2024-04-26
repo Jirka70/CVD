@@ -24,6 +24,7 @@ namespace CVD
                 RemoveBadTrianglesFromTriangulation(delaunayTriangles, badTriangles);
                 Triangulate(point, delaunayTriangles, polygon);
             }
+            
             return delaunayTriangles;
         }
 

@@ -34,9 +34,9 @@ namespace CVD
             //DrawTriangles(triangulation);
             VoronoiDiagram voronoi = new();
             Dictionary<VoronoiPoint2D, VoronoiCell> voronoiDiagram = voronoi.CreateVoronoiDiagram(triangulation);
+            voronoiDiagram = CenterVoronoiDiagram(voronoiDiagram, 2);
             DrawVoronoiCells(voronoiDiagram);
 
-            voronoiDiagram = CenterVoronoiDiagram(voronoiDiagram, 2);
 
         }
 
@@ -44,6 +44,7 @@ namespace CVD
         {
             DelaunayTriangulation delaunayTriangulation = new();
             ISet<DelaunayTriangle> triangulation = delaunayTriangulation.CreateTriangulation(points);
+            //DrawTriangles(triangulation);
             VoronoiDiagram voronoi = new();
             return voronoi.CreateVoronoiDiagram(triangulation);
         }
@@ -78,9 +79,8 @@ namespace CVD
         {
             Pen pen = new(Color.Blue);
             foreach (VoronoiCell cell in voronoiCells.Values)
-            {
+            {             
                 DrawVoronoiCell(pen, cell);
-                break;
             }
         }
 

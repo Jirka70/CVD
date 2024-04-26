@@ -8,39 +8,44 @@ namespace CVD
         public Dictionary<VoronoiPoint2D, VoronoiCell> CreateVoronoiDiagram(ISet<DelaunayTriangle> delaunayTriangulation)
         {
             Dictionary<Edge, List<DelaunayTriangle>> adjacencyTriangleMap = CreateAdjacencyTriangleMap(delaunayTriangulation);
-            Dictionary<VoronoiPoint2D, VoronoiCell> voronoiCells = [];
+            Dictionary<VoronoiPoint2D, VoronoiCell> voronoiCells = new();
   
-            foreach (List<DelaunayTriangle> trianglesWithThisEdge in adjacencyTriangleMap.Values)
+            foreach (KeyValuePair<Edge, List<DelaunayTriangle>> keyPair in adjacencyTriangleMap)
             {
+                Edge currentEdge = keyPair.Key;
+                List<DelaunayTriangle> trianglesWithThisEdge = keyPair.Value;
                 bool isEdgeSharedByTwoTriangles = trianglesWithThisEdge.Count == 2;
                 if (isEdgeSharedByTwoTriangles)
                 {
                     DelaunayTriangle triangle1 = trianglesWithThisEdge[0];
                     DelaunayTriangle triangle2 = trianglesWithThisEdge[1];
+                    
 
-                    Edge edge1 = new(triangle1.circumCircleCenter, triangle2.circumCircleCenter);
+                    Edge voronoiCellEdge = new(triangle1.circumCircleCenter, triangle2.circumCircleCenter);
 
-                    AddVerticesIfAbsent(voronoiCells, triangle1);
-                    AddVerticesIfAbsent(voronoiCells, triangle2);
+                    AddVerticesIfAbsent(voronoiCells, currentEdge);
 
-                    VoronoiCell cell1 = voronoiCells[triangle1.point1];
-                    VoronoiCell cell2 = voronoiCells[triangle1.point2];
-                    VoronoiCell cell3 = voronoiCells[triangle1.point3];
 
-                    cell1.AddEdge(edge1);
-                    cell2.AddEdge(edge1);
-                    cell3.AddEdge(edge1);
+                    VoronoiCell cell1 = voronoiCells[currentEdge.startingPoint];
+                    VoronoiCell cell2 = voronoiCells[currentEdge.endingPoint];
+                    
+
+
+                    cell1.AddEdge(voronoiCellEdge);
+                    cell2.AddEdge(voronoiCellEdge);
+
+                    
                 }
             }
 
             return voronoiCells;
         }
 
-        private static void AddVerticesIfAbsent(Dictionary<VoronoiPoint2D, VoronoiCell> voronoiCells, DelaunayTriangle triangle)
+        private static void AddVerticesIfAbsent(Dictionary<VoronoiPoint2D, VoronoiCell> voronoiCells, Edge edge)
         {
-            voronoiCells.TryAdd(triangle.point1, new(triangle.circumCircleCenter));
-            voronoiCells.TryAdd(triangle.point2, new(triangle.circumCircleCenter));
-            voronoiCells.TryAdd(triangle.point3, new(triangle.circumCircleCenter));
+            voronoiCells.TryAdd(edge.startingPoint, new(edge.startingPoint));
+            voronoiCells.TryAdd(edge.endingPoint, new(edge.endingPoint));
+  
         }
 
         private Dictionary<Edge, List<DelaunayTriangle>> CreateAdjacencyTriangleMap(ISet<DelaunayTriangle> delaunayTriangulation)

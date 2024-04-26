@@ -1,9 +1,16 @@
 ﻿namespace VoronoiDiagrams
 {
-    internal class VoronoiPoint2D(double x, double y)
+    internal class VoronoiPoint2D
     {
-        public readonly double X = x;
-        public readonly double Y = y;
+
+        public readonly double X;
+        public readonly double Y;
+
+        public VoronoiPoint2D(double x, double y)
+        {
+            X = x;
+            Y = y;
+        }
 
         public override bool Equals(object? obj)
         {
@@ -18,7 +25,7 @@
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(x, y);
+            return HashCode.Combine(X, Y);
         }
     }
 }

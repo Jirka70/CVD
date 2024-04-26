@@ -13,6 +13,11 @@ namespace CVD
             this.endingPoint = endingPoint;
         }
 
+        public bool HasVertex(VoronoiPoint2D vertex)
+        {
+            return startingPoint.Equals(vertex) || endingPoint.Equals(vertex);
+        }
+
         public override bool Equals(object? obj)
         {
             if (obj == null || GetType() != obj.GetType())
