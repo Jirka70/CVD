@@ -4,7 +4,7 @@ namespace CVD
 {
     public partial class VoronoiForm : Form
     {
-        private static readonly int POINT_CLOUD_SIZE = 128;
+        private static readonly int POINT_CLOUD_SIZE = 500;
 
         private readonly Graphics graphicsContext;
         private readonly PictureBox canvasBox = new PictureBox();
@@ -30,13 +30,13 @@ namespace CVD
        
             DelaunayTriangulation delaunayTriangulation = new();
             ISet<DelaunayTriangle> triangulation = delaunayTriangulation.CreateTriangulation(projectedPointCloud);
-            DrawPoints(projectedPointCloud);
+//            DrawPoints(projectedPointCloud);
             //DrawTriangles(triangulation);
             VoronoiDiagram voronoi = new();
             Dictionary<VoronoiPoint2D, VoronoiCell> voronoiDiagram = voronoi.CreateVoronoiDiagram(triangulation);
-            voronoiDiagram = CenterVoronoiDiagram(voronoiDiagram, 2);
-            DrawVoronoiCells(voronoiDiagram);
 
+            voronoiDiagram = CenterVoronoiDiagram(voronoiDiagram, 42);
+            DrawVoronoiCells(voronoiDiagram);
 
         }
 
@@ -44,7 +44,7 @@ namespace CVD
         {
             DelaunayTriangulation delaunayTriangulation = new();
             ISet<DelaunayTriangle> triangulation = delaunayTriangulation.CreateTriangulation(points);
-            //DrawTriangles(triangulation);
+            
             VoronoiDiagram voronoi = new();
             return voronoi.CreateVoronoiDiagram(triangulation);
         }
@@ -52,11 +52,19 @@ namespace CVD
         private Dictionary<VoronoiPoint2D, VoronoiCell> CenterVoronoiDiagram(Dictionary<VoronoiPoint2D, VoronoiCell> voronoiDiagram, int numberOfIterations)
         {
             List<VoronoiPoint2D> newPoints = new();
-            foreach (VoronoiCell cell in voronoiDiagram.Values)
+            for (int i = 0; i < numberOfIterations; i++)
             {
-                newPoints.Add(CalculateCenterOfGravity(cell));
+                newPoints = new();
+                foreach (VoronoiCell cell in voronoiDiagram.Values)
+                {
+                    newPoints.Add(CalculateCenterOfGravity(cell));
+                }
+                voronoiDiagram = CalculateVoronoiDiagram(newPoints);
             }
-            voronoiDiagram = CalculateVoronoiDiagram(newPoints);
+            DrawVoronoiCells(voronoiDiagram);
+            DrawPoints(newPoints);
+            
+           
             return voronoiDiagram;
         }
 
@@ -68,6 +76,10 @@ namespace CVD
             double findingY = 0;
             foreach (VoronoiPoint2D vertex in vertices)
             {
+                if (Math.Abs(vertex.X) > WIDTH || Math.Abs(vertex.Y) > HEIGHT)
+                {
+                    return voronoiCell.getCenter();
+                }
                 findingX += vertex.X;
                 findingY += vertex.Y;
             }

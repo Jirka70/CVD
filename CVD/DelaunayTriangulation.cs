@@ -24,8 +24,24 @@ namespace CVD
                 RemoveBadTrianglesFromTriangulation(delaunayTriangles, badTriangles);
                 Triangulate(point, delaunayTriangles, polygon);
             }
-            
+
             return delaunayTriangles;
+        }
+
+        private void RemoveTrianglesContainingSupertriangleVertex(ISet<DelaunayTriangle> triangles)
+        {
+            VoronoiPoint2D superTriangleVertex1 = superDelaunayTriangle.point1;
+            VoronoiPoint2D superTriangleVertex2 = superDelaunayTriangle.point2;
+            VoronoiPoint2D superTriangleVertex3 = superDelaunayTriangle.point3;
+
+            foreach (DelaunayTriangle triangle in triangles) {
+                if (triangle.HasVertex(superTriangleVertex1)
+                    || triangle.HasVertex(superTriangleVertex2)
+                    || triangle.HasVertex(superTriangleVertex3))
+                {
+                    triangles.Remove(triangle);
+                }
+            }
         }
 
         private static void Triangulate(VoronoiPoint2D point, ISet<DelaunayTriangle> triangulation, ISet<Edge> polygon)
