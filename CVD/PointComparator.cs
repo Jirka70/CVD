@@ -2,9 +2,9 @@
 
 namespace CVD
 {
-    internal class PointComparator : IComparer<VoronoiPoint2D>
+    internal class PointComparator : IComparer<Point3D>
     {
-        public int Compare(VoronoiPoint2D p1, VoronoiPoint2D p2)
+        public int Compare(Point3D p1, Point3D p2)
         {
             int xCordComparison = p1.X.CompareTo(p2.X);
             if (xCordComparison != 0)

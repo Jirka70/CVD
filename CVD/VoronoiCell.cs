@@ -5,12 +5,12 @@ namespace CVD
     internal class VoronoiCell
     {
         private readonly List<Edge> edges = new();
-        private readonly ISet<VoronoiPoint2D> vertices = new HashSet<VoronoiPoint2D>();
+        private readonly ISet<Point3D> vertices = new HashSet<Point3D>();
 
-        private readonly VoronoiPoint2D center;
+        private readonly Point3D center;
 
 
-        public VoronoiCell(VoronoiPoint2D center)
+        public VoronoiCell(Point3D center)
         {
             this.center = center;
         }
@@ -22,16 +22,16 @@ namespace CVD
             vertices.Add(edge.endingPoint);
         }
 
-        public ISet<VoronoiPoint2D> getVertices() { return vertices; }
+        public ISet<Point3D> getVertices() { return vertices; }
 
         public override bool Equals(object? obj)
         {
             return obj is VoronoiCell cell &&
                    EqualityComparer<List<Edge>>.Default.Equals(edges, cell.edges) &&
-                   EqualityComparer<VoronoiPoint2D>.Default.Equals(center, cell.center);
+                   EqualityComparer<Point3D>.Default.Equals(center, cell.center);
         }
 
-        public VoronoiPoint2D getCenter()
+        public Point3D getCenter()
         {
             return center;
         }

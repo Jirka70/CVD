@@ -5,10 +5,10 @@ namespace CVD
     internal class VoronoiDiagram
     {
 
-        public Dictionary<VoronoiPoint2D, VoronoiCell> CreateVoronoiDiagram(ISet<DelaunayTriangle> delaunayTriangulation)
+        public Dictionary<Point3D, VoronoiCell> CreateVoronoiDiagram(ISet<DelaunayTriangle> delaunayTriangulation)
         {
             Dictionary<Edge, List<DelaunayTriangle>> adjacencyTriangleMap = CreateAdjacencyTriangleMap(delaunayTriangulation);
-            Dictionary<VoronoiPoint2D, VoronoiCell> voronoiCells = new();
+            Dictionary<Point3D, VoronoiCell> voronoiCells = new();
   
             foreach (KeyValuePair<Edge, List<DelaunayTriangle>> keyPair in adjacencyTriangleMap)
             {
@@ -29,23 +29,18 @@ namespace CVD
                     VoronoiCell cell1 = voronoiCells[currentEdge.startingPoint];
                     VoronoiCell cell2 = voronoiCells[currentEdge.endingPoint];
                     
-
-
                     cell1.AddEdge(voronoiCellEdge);
-                    cell2.AddEdge(voronoiCellEdge);
-
-                    
+                    cell2.AddEdge(voronoiCellEdge);             
                 }
             }
 
             return voronoiCells;
         }
 
-        private static void AddVerticesIfAbsent(Dictionary<VoronoiPoint2D, VoronoiCell> voronoiCells, Edge edge)
+        private static void AddVerticesIfAbsent(Dictionary<Point3D, VoronoiCell> voronoiCells, Edge edge)
         {
             voronoiCells.TryAdd(edge.startingPoint, new(edge.startingPoint));
             voronoiCells.TryAdd(edge.endingPoint, new(edge.endingPoint));
-  
         }
 
         private Dictionary<Edge, List<DelaunayTriangle>> CreateAdjacencyTriangleMap(ISet<DelaunayTriangle> delaunayTriangulation)
@@ -59,7 +54,6 @@ namespace CVD
                 PutToAdjacencyTrianglesMap(adjacencyTriangleMap, edge2, triangle);
                 Edge edge3 = new Edge(triangle.point1, triangle.point3);
                 PutToAdjacencyTrianglesMap(adjacencyTriangleMap, edge3 , triangle);
-
             }
 
             return adjacencyTriangleMap;

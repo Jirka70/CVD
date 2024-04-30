@@ -8,15 +8,15 @@ namespace CVD
         private readonly DelaunayTriangle superDelaunayTriangle;
 
         public DelaunayTriangulation() {
-            superDelaunayTriangle = new(new VoronoiPoint2D(BOUND / 2, -BOUND), new VoronoiPoint2D(-BOUND, BOUND),
-                new VoronoiPoint2D(BOUND, BOUND));   
+            superDelaunayTriangle = new(new Point3D(BOUND / 2, -BOUND, 0), new Point3D(-BOUND, BOUND, 0),
+                new Point3D(BOUND, BOUND, 0));   
         }
 
-        public ISet<DelaunayTriangle> CreateTriangulation(List<VoronoiPoint2D> points)
+        public ISet<DelaunayTriangle> CreateTriangulation(List<Point3D> points)
         {
             ISet<DelaunayTriangle> delaunayTriangles = new HashSet<DelaunayTriangle>();
             delaunayTriangles.Add(superDelaunayTriangle);
-            foreach (VoronoiPoint2D point in points)
+            foreach (Point3D point in points)
             {
                 ISet<DelaunayTriangle> badTriangles = FindBadTriangles(point, delaunayTriangles);
                 ISet<Edge> polygon = CreatePolygonOfBadTriangles(badTriangles);
@@ -29,9 +29,9 @@ namespace CVD
 
         private void RemoveTrianglesContainingSupertriangleVertex(ISet<DelaunayTriangle> triangles)
         {
-            VoronoiPoint2D superTriangleVertex1 = superDelaunayTriangle.point1;
-            VoronoiPoint2D superTriangleVertex2 = superDelaunayTriangle.point2;
-            VoronoiPoint2D superTriangleVertex3 = superDelaunayTriangle.point3;
+            Point3D superTriangleVertex1 = superDelaunayTriangle.point1;
+            Point3D superTriangleVertex2 = superDelaunayTriangle.point2;
+            Point3D superTriangleVertex3 = superDelaunayTriangle.point3;
 
             foreach (DelaunayTriangle triangle in triangles) {
                 if (triangle.HasVertex(superTriangleVertex1)
@@ -43,11 +43,11 @@ namespace CVD
             }
         }
 
-        private static void Triangulate(VoronoiPoint2D point, ISet<DelaunayTriangle> triangulation, ISet<Edge> polygon)
+        private static void Triangulate(Point3D point, ISet<DelaunayTriangle> triangulation, ISet<Edge> polygon)
         {
             foreach(Edge edge in polygon)
             {
-                triangulation.Add(new DelaunayTriangle(edge.startingPoint, edge.endingPoint, new(point.X, point.Y)));
+                triangulation.Add(new DelaunayTriangle(edge.startingPoint, edge.endingPoint, new(point.X, point.Y, point.Z)));
             }
         }
 
@@ -102,12 +102,12 @@ namespace CVD
             return polygon;
         }
 
-        private static ISet<DelaunayTriangle> FindBadTriangles(VoronoiPoint2D point, ISet<DelaunayTriangle> triangulation)
+        private static ISet<DelaunayTriangle> FindBadTriangles(Point3D point, ISet<DelaunayTriangle> triangulation)
         {
             ISet<DelaunayTriangle> badTriangles = new HashSet<DelaunayTriangle>();
             foreach (DelaunayTriangle triangle in triangulation)
             {
-                if (triangle.IsInCircumcircle(point.X, point.Y))
+                if (triangle.IsInCircumcircle(point.X, point.Y, point.Z))
                 {
                     badTriangles.Add(triangle);
                 }

@@ -4,16 +4,16 @@ namespace CVD
 {
     internal class Edge
     {
-        public readonly VoronoiPoint2D startingPoint;
-        public readonly VoronoiPoint2D endingPoint;
+        public readonly Point3D startingPoint;
+        public readonly Point3D endingPoint;
 
-        public Edge(VoronoiPoint2D startingPoint, VoronoiPoint2D endingPoint)
+        public Edge(Point3D startingPoint, Point3D endingPoint)
         {
             this.startingPoint = startingPoint;
             this.endingPoint = endingPoint;
         }
 
-        public bool HasVertex(VoronoiPoint2D vertex)
+        public bool HasVertex(Point3D vertex)
         {
             return startingPoint.Equals(vertex) || endingPoint.Equals(vertex);
         }
