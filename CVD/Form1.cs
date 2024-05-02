@@ -25,24 +25,24 @@ namespace CVD
 
         private void VoronoiProcess()
         {
-            //List<Point3D> randomPointCloud = Point3DGenerator.GenerateRandomPoints(POINT_CLOUD_SIZE, WIDTH, HEIGHT);
-            List<Point3D> randomPointCloud = new();
+            List<Point3D> randomPointCloud = Point3DGenerator.GenerateRandomPoints(POINT_CLOUD_SIZE, WIDTH, HEIGHT);
+            /*List<Point3D> randomPointCloud = new();
             for (int i = 0; i < HEIGHT; i += 50)
             {
                 for (int j = 0; j < WIDTH; j += 50)
                 {
                     randomPointCloud.Add(new(j, i, 12));
                 }
-            }
-            List<Point3D> projectedPointCloud = CalculatePointsOnSlope(45, randomPointCloud);
+            }*/
+            List<Point3D> projectedPointCloud = CalculatePointsOnSlope(0, randomPointCloud);
             DelaunayTriangulation delaunayTriangulation = new();
             ISet<DelaunayTriangle> triangulation = delaunayTriangulation.CreateTriangulation(projectedPointCloud);
             //DrawTriangles(triangulation);
             VoronoiDiagram voronoi = new();
             Dictionary<Point3D, VoronoiCell> voronoiDiagram = voronoi.CreateVoronoiDiagram(triangulation);
-            //voronoiDiagram = CenterVoronoiDiagram(voronoiDiagram, 10);
+            voronoiDiagram = CenterVoronoiDiagram(voronoiDiagram, 50);
             DrawVoronoiCells(voronoiDiagram);
-            Draw3DPoints(projectedPointCloud);
+            //Draw3DPoints(projectedPointCloud);
         }
 
         private void Draw3DPoints(List<Point3D> points)
