@@ -19,12 +19,11 @@ namespace CVD
                 {
                     DelaunayTriangle triangle1 = trianglesWithThisEdge[0];
                     DelaunayTriangle triangle2 = trianglesWithThisEdge[1];
-                    
+        
 
                     Edge voronoiCellEdge = new(triangle1.circumCircleCenter, triangle2.circumCircleCenter);
 
                     AddVerticesIfAbsent(voronoiCells, currentEdge);
-
 
                     VoronoiCell cell1 = voronoiCells[currentEdge.startingPoint];
                     VoronoiCell cell2 = voronoiCells[currentEdge.endingPoint];
@@ -48,11 +47,11 @@ namespace CVD
             Dictionary<Edge, List<DelaunayTriangle>> adjacencyTriangleMap = new();
             foreach (DelaunayTriangle triangle in delaunayTriangulation)
             {
-                Edge edge1 = new Edge(triangle.point1, triangle.point2);
+                Edge edge1 = new(triangle.point1, triangle.point2);
                 PutToAdjacencyTrianglesMap(adjacencyTriangleMap, edge1, triangle);
-                Edge edge2 = new Edge(triangle.point2, triangle.point3);
+                Edge edge2 = new(triangle.point2, triangle.point3);
                 PutToAdjacencyTrianglesMap(adjacencyTriangleMap, edge2, triangle);
-                Edge edge3 = new Edge(triangle.point1, triangle.point3);
+                Edge edge3 = new(triangle.point1, triangle.point3);
                 PutToAdjacencyTrianglesMap(adjacencyTriangleMap, edge3 , triangle);
             }
 
