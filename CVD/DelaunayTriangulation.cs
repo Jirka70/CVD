@@ -27,22 +27,6 @@ namespace CVD
             return delaunayTriangles;
         }
 
-        private void RemoveTrianglesContainingSupertriangleVertex(ISet<DelaunayTriangle> triangles)
-        {
-            Point3D superTriangleVertex1 = superDelaunayTriangle.point1;
-            Point3D superTriangleVertex2 = superDelaunayTriangle.point2;
-            Point3D superTriangleVertex3 = superDelaunayTriangle.point3;
-
-            foreach (DelaunayTriangle triangle in triangles) {
-                if (triangle.HasVertex(superTriangleVertex1)
-                    || triangle.HasVertex(superTriangleVertex2)
-                    || triangle.HasVertex(superTriangleVertex3))
-                {
-                    triangles.Remove(triangle);
-                }
-            }
-        }
-
         private static void Triangulate(Point3D point, ISet<DelaunayTriangle> triangulation, ISet<Edge> polygon)
         {
             foreach(Edge edge in polygon)
