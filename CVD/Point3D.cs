@@ -1,4 +1,6 @@
 ﻿
+using CVD;
+
 namespace VoronoiDiagrams
 {
    
@@ -17,6 +19,43 @@ namespace VoronoiDiagrams
         public double CalculateEuclideanDistance(Point3D point)
         {
             return Math.Sqrt(Math.Pow(X - point.X, 2) + Math.Pow(Y - point.Y, 2) + Math.Pow(Z - point.Z, 2));
+        }
+
+        public Point3D GetOppositeVector()
+        {
+            return new(-X, -Y, -Z);
+        }
+
+        public Point3D normalize()
+        {
+
+            double length = CalculateLength();
+            if (length == 0)
+            {
+                return new(0, 0, 0);
+            }
+            return new(X / length, Y / length, Z / length);
+        }
+
+        public double CalculateScalarProduct(Point3D point)
+        {
+            return X * point.X + Y * point.Y + Z * point.Z;
+        }
+
+        public double CalculateLength()
+        {
+            return Math.Sqrt(X*X + Y*Y + Z*Z);
+        }
+
+        public double CalculateShortestDistanceToPlane(Plane2D plane)
+        {
+            Function planeEquation = plane.equation;
+            double a = planeEquation.A;
+            double b = planeEquation.B;
+            double c = planeEquation.C;
+            double d = planeEquation.D;
+            return Math.Abs(a * X + b * Y + c * Z + d) / Math.Sqrt(a * a + b * b + c * c);
+
         }
 
         public Point3D CalculateCrossProduct(Point3D point)

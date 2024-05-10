@@ -1,10 +1,11 @@
+using System.Numerics;
 using VoronoiDiagrams;
 
 namespace CVD
 {
     public partial class VoronoiForm : Form
     {
-        private static readonly int POINT_CLOUD_SIZE = 500;
+        private static readonly int POINT_CLOUD_SIZE = 42;
 
         private readonly Graphics graphicsContext;
         private readonly PictureBox canvasBox = new PictureBox();
@@ -23,9 +24,40 @@ namespace CVD
             VoronoiProcess();
         }
 
+
+
         private void VoronoiProcess()
         {
-            List<Point3D> randomPointCloud = Point3DGenerator.GenerateRandomPoints(POINT_CLOUD_SIZE, WIDTH, HEIGHT);
+            List<Point3D> randomPointCloud = new();//Point3DGenerator.GenerateRandomPoints(POINT_CLOUD_SIZE, WIDTH, HEIGHT);
+            Point3D pointToProject = new(3,3,3);
+            randomPointCloud.Add(pointToProject);
+            Point3D initialPoint = new(1,2,3);
+            Point3D normalVector = new(0,0,1);
+            Point3D oppositeVector = normalVector.GetOppositeVector();
+            Plane2D plane2D = new(normalVector, initialPoint);
+            MessageBox.Show(plane2D.equation.ToString());
+
+            /*double distanceToPlane = point.CalculateShortestDistanceToPlane(plane2D);
+            Point3D oppositeVectorNormalized = oppositeVector.normalize();
+            Point3D projectedPoint = oppositeVectorNormalized.Multiply(distanceToPlane).Add(point);
+            if (!plane2D.ContainsPoint(projectedPoint))
+            {
+                projectedPoint = normalVector.normalize().Multiply(distanceToPlane).Add(point);
+            }
+            
+            Point3D pedestalPlaneNormalizedVector = new(0, 0, 1);
+
+            Point3D axisVector = normalVector.CalculateCrossProduct(pedestalPlaneNormalizedVector);
+            Point3D intersectPoint = CalculateIntersectPointWithPedestalPlane(plane2D);
+            Point3D translatedProjectedPoint = projectedPoint.Subtract(intersectPoint);
+            Plane2D pedestalPlane = new(new(0, 0, 1), new(0, 0, 0));
+            double angle = plane2D.CalculateAngle(pedestalPlane);
+            Point3D rotatedPoint = RotatePointAroundArbitraryAxis(axisVector, translatedProjectedPoint, angle);
+            MessageBox.Show("" + rotatedPoint.ToString());*/
+            List<Point3D> projectedPointloud = ProjectPointCloudOnGround(plane2D, randomPointCloud);
+
+
+
             /*List<Point3D> randomPointCloud = new();
             for (int i = 0; i < HEIGHT; i += 50)
             {
@@ -34,7 +66,7 @@ namespace CVD
                     randomPointCloud.Add(new(j, i, 12));
                 }
             }*/
-            List<Point3D> projectedPointCloud = CalculatePointsOnSlope(0, randomPointCloud);
+            /*List<Point3D> projectedPointCloud = CalculatePointsOnSlope(0, randomPointCloud);
             DelaunayTriangulation delaunayTriangulation = new();
             ISet<DelaunayTriangle> triangulation = delaunayTriangulation.CreateTriangulation(projectedPointCloud);
             //DrawTriangles(triangulation);
@@ -42,8 +74,93 @@ namespace CVD
             Dictionary<Point3D, VoronoiCell> voronoiDiagram = voronoi.CreateVoronoiDiagram(triangulation);
             voronoiDiagram = CenterVoronoiDiagram(voronoiDiagram, 50);
             DrawVoronoiCells(voronoiDiagram);
-            //Draw3DPoints(projectedPointCloud);
+            //Draw3DPoints(projectedPointCloud);*/
         }
+
+        private List<Point3D> ProjectPointCloudOnGround(Plane2D plane, List<Point3D> pointcloud)
+        {
+            List<Point3D> projectedPointcloud = new();
+            foreach (Point3D point in pointcloud)
+            {
+                Point3D projectedPoint = ProjectPointOnGround(plane, point);
+                projectedPointcloud.Add(projectedPoint);
+                MessageBox.Show("pp: " + projectedPoint.ToString());
+            }
+
+            return projectedPointcloud;
+        }
+
+
+
+        private Point3D ProjectPointOnGround(Plane2D plane, Point3D point)
+        {
+            Point3D normalVector = plane.normalVector;
+            Point3D oppositeVector = normalVector.GetOppositeVector();
+            double distanceToPlane = point.CalculateShortestDistanceToPlane(plane);
+            Point3D oppositeVectorNormalized = oppositeVector.normalize();
+            Point3D projectedPoint = oppositeVectorNormalized.Multiply(distanceToPlane).Add(point);
+
+            if (!plane.ContainsPoint(projectedPoint))
+            {
+                projectedPoint = normalVector.normalize().Multiply(distanceToPlane).Add(point);
+            }
+
+            Point3D pedestalPlaneNormalizedVector = new(0, 0, 1);
+            Point3D axisVector = normalVector.CalculateCrossProduct(pedestalPlaneNormalizedVector);
+            Point3D intersectPoint = CalculateIntersectPointWithPedestalPlane(plane);
+            Point3D translatedProjectedPoint = projectedPoint.Subtract(intersectPoint);
+
+            Plane2D pedestalPlane = new(new(0, 0, 1), new(0, 0, 0));
+            double angle = plane.CalculateAngle(pedestalPlane);
+            return RotatePointAroundArbitraryAxis(axisVector, translatedProjectedPoint, angle);
+        } 
+
+        private Point3D CalculateIntersectPointWithPedestalPlane(Plane2D plane)
+        {
+            double a = plane.equation.A;
+            double b = plane.equation.B;
+            double d = plane.equation.D;
+            if (a == 0 && b == 0)
+            {
+                return new(0,0,0);
+            }
+            if (b == 0)
+            {
+                return new(-d / a, 0, 0);
+            }
+            double x = 2;
+            double y = (-d - a*x) / b;
+            return new(x, y, 0);
+        }
+
+        /**
+         * Angle has to be defined in RADIANS
+         */
+        private Point3D RotatePointAroundArbitraryAxis(Point3D axis, Point3D point, double angle)
+        {
+            Point3D axisNormalized = axis.normalize();
+            double x = axisNormalized.X;
+            double y = axisNormalized.Y;
+            double z = axisNormalized.Z;
+            double cosAngle = Math.Cos(angle);
+            double sinAngle = Math.Sin(angle);
+            Point3D[] rotationMatrix = { new(cosAngle + x*x*(1 - cosAngle), x*y*(1-cosAngle) - z*sinAngle, x*z*(1-cosAngle) + y*sinAngle),
+                new(y*x*(1-cosAngle) + z*(sinAngle), cosAngle+y*y*(1-cosAngle), y*z*(1-cosAngle) - x*sinAngle),
+                new(z*x*(1-cosAngle)-y*sinAngle, z*y*(1-cosAngle)+x*sinAngle, cosAngle + z*z*(1-cosAngle))};
+            return Rotate(rotationMatrix, point);
+        }
+
+        private Point3D Rotate(Point3D[] rotationMatrix, Point3D vectorToRotate)
+        {
+            double first = rotationMatrix[0].CalculateScalarProduct(vectorToRotate);
+            double second = rotationMatrix[1].CalculateScalarProduct(vectorToRotate);
+            double third = rotationMatrix[2].CalculateScalarProduct(vectorToRotate);
+            
+
+            return new(first, second, third);
+        }
+
+
 
         private void Draw3DPoints(List<Point3D> points)
         {
