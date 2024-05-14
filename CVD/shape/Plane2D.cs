@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using VoronoiDiagrams;
+using CVD.util;
 
-namespace CVD
+namespace CVD.shape
 {
     internal class Plane2D
     {
@@ -25,7 +25,7 @@ namespace CVD
         {
             double epsilon = 0.0001;
             double pointValue = equation.CalculateValueOfPoint(point);
-            return Math.Abs(pointValue) <= epsilon;        
+            return Math.Abs(pointValue) <= epsilon;
         }
 
         /**

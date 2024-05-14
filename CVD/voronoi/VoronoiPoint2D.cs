@@ -1,4 +1,4 @@
-﻿namespace VoronoiDiagrams
+﻿namespace CVD.voronoi
 {
     internal class VoronoiPoint2D
     {

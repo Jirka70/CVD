@@ -1,10 +1,10 @@
-﻿using VoronoiDiagrams;
+﻿using CVD.voronoi;
 
-namespace CVD
+namespace CVD.util
 {
-    internal class PointComparator : IComparer<Point3D>
+    internal class PointComparator : IComparer<VoronoiPoint2D>
     {
-        public int Compare(Point3D p1, Point3D p2)
+        public int Compare(VoronoiPoint2D p1, VoronoiPoint2D p2)
         {
             int xCordComparison = p1.X.CompareTo(p2.X);
             if (xCordComparison != 0)

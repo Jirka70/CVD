@@ -1,22 +1,25 @@
-﻿using VoronoiDiagrams;
+﻿using CVD.shape;
+using CVD.voronoi;
 
-namespace CVD
+namespace CVD.delaunay
 {
     internal class DelaunayTriangulation
     {
-        private static readonly int BOUND = 1_000_000;
+        public static readonly int SUPER_TRIANGLE_BOUND = 1_000_000;
         private readonly DelaunayTriangle superDelaunayTriangle;
 
-        public DelaunayTriangulation() {
-            superDelaunayTriangle = new(new Point3D(BOUND / 2, -BOUND, 0), new Point3D(-BOUND, BOUND, 0),
-                new Point3D(BOUND, BOUND, 0));   
+        public DelaunayTriangulation()
+        {
+            superDelaunayTriangle = new(new(SUPER_TRIANGLE_BOUND / 2, -SUPER_TRIANGLE_BOUND),
+                new(-SUPER_TRIANGLE_BOUND, SUPER_TRIANGLE_BOUND),
+                new(SUPER_TRIANGLE_BOUND, SUPER_TRIANGLE_BOUND));
         }
 
-        public ISet<DelaunayTriangle> CreateTriangulation(List<Point3D> points)
+        public ISet<DelaunayTriangle> CreateTriangulation(List<VoronoiPoint2D> points)
         {
             ISet<DelaunayTriangle> delaunayTriangles = new HashSet<DelaunayTriangle>();
             delaunayTriangles.Add(superDelaunayTriangle);
-            foreach (Point3D point in points)
+            foreach (VoronoiPoint2D point in points)
             {
                 ISet<DelaunayTriangle> badTriangles = FindBadTriangles(point, delaunayTriangles);
                 ISet<Edge> polygon = CreatePolygonOfBadTriangles(badTriangles);
@@ -27,11 +30,11 @@ namespace CVD
             return delaunayTriangles;
         }
 
-        private static void Triangulate(Point3D point, ISet<DelaunayTriangle> triangulation, ISet<Edge> polygon)
+        private static void Triangulate(VoronoiPoint2D point, ISet<DelaunayTriangle> triangulation, ISet<Edge> polygon)
         {
-            foreach(Edge edge in polygon)
+            foreach (Edge edge in polygon)
             {
-                triangulation.Add(new DelaunayTriangle(edge.startingPoint, edge.endingPoint, new(point.X, point.Y, point.Z)));
+                triangulation.Add(new DelaunayTriangle(edge.startingPoint, edge.endingPoint, new(point.X, point.Y)));
             }
         }
 
@@ -44,7 +47,7 @@ namespace CVD
         private static bool IsEdgeSharedWithOtherBadTriangle(ISet<DelaunayTriangle> badTriangles,
                                                      DelaunayTriangle triangleWithEdge, Edge edge)
         {
-            foreach(DelaunayTriangle badTriangle in badTriangles)
+            foreach (DelaunayTriangle badTriangle in badTriangles)
             {
                 if (badTriangle.Equals(triangleWithEdge))
                 {
@@ -79,19 +82,19 @@ namespace CVD
                 }
                 if (!IsEdgeSharedWithOtherBadTriangle(badTriangles, badTriangle, edge3))
                 {
-                    polygon.Add(edge3); 
+                    polygon.Add(edge3);
                 }
             }
 
             return polygon;
         }
 
-        private static ISet<DelaunayTriangle> FindBadTriangles(Point3D point, ISet<DelaunayTriangle> triangulation)
+        private static ISet<DelaunayTriangle> FindBadTriangles(VoronoiPoint2D point, ISet<DelaunayTriangle> triangulation)
         {
             ISet<DelaunayTriangle> badTriangles = new HashSet<DelaunayTriangle>();
             foreach (DelaunayTriangle triangle in triangulation)
             {
-                if (triangle.IsInCircumcircle(point.X, point.Y, point.Z))
+                if (triangle.IsInCircumcircle(point.X, point.Y))
                 {
                     badTriangles.Add(triangle);
                 }

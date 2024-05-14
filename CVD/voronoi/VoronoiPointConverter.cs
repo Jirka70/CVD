@@ -1,4 +1,6 @@
-﻿namespace VoronoiDiagrams
+﻿using CVD.shape;
+
+namespace CVD.voronoi
 {
     internal class VoronoiPointConverter
     {

@@ -1,5 +1,7 @@
 ﻿
-namespace VoronoiDiagrams
+using CVD.shape;
+
+namespace CVD.util
 {
     internal class Point3DGenerator
     {

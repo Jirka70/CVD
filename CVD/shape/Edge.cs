@@ -1,19 +1,19 @@
-﻿using VoronoiDiagrams;
+﻿using CVD.voronoi;
 
-namespace CVD
+namespace CVD.shape
 {
     internal class Edge
     {
-        public readonly Point3D startingPoint;
-        public readonly Point3D endingPoint;
+        public readonly VoronoiPoint2D startingPoint;
+        public readonly VoronoiPoint2D endingPoint;
 
-        public Edge(Point3D startingPoint, Point3D endingPoint)
+        public Edge(VoronoiPoint2D startingPoint, VoronoiPoint2D endingPoint)
         {
             this.startingPoint = startingPoint;
             this.endingPoint = endingPoint;
         }
 
-        public bool HasVertex(Point3D vertex)
+        public bool HasVertex(VoronoiPoint2D vertex)
         {
             return startingPoint.Equals(vertex) || endingPoint.Equals(vertex);
         }

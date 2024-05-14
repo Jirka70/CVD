@@ -1,4 +1,4 @@
-namespace CVD
+namespace CVD.launch
 {
     internal static class Program
     {

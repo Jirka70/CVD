@@ -1,14 +1,22 @@
+using System.Diagnostics;
+using System.Net.Http.Headers;
 using System.Numerics;
-using VoronoiDiagrams;
+using CVD.delaunay;
+using CVD.shape;
+using CVD.transform;
+using CVD.transforms;
+using CVD.util;
+using CVD.voronoi;
 
 namespace CVD
 {
     public partial class VoronoiForm : Form
     {
-        private static readonly int POINT_CLOUD_SIZE = 42;
+        private static readonly int POINT_CLOUD_SIZE = 420;
+        private static readonly int NUMBER_OF_ITERATIONS = 50;
 
         private readonly Graphics graphicsContext;
-        private readonly PictureBox canvasBox = new PictureBox();
+        private readonly PictureBox canvasBox = new();
 
 
         public VoronoiForm()
@@ -24,75 +32,107 @@ namespace CVD
             VoronoiProcess();
         }
 
-
-
         private void VoronoiProcess()
         {
-            List<Point3D> randomPointCloud = new();//Point3DGenerator.GenerateRandomPoints(POINT_CLOUD_SIZE, WIDTH, HEIGHT);
-            Point3D pointToProject = new(3,3,3);
-            randomPointCloud.Add(pointToProject);
-            Point3D initialPoint = new(1,2,3);
-            Point3D normalVector = new(0,0,1);
-            Point3D oppositeVector = normalVector.GetOppositeVector();
-            Plane2D plane2D = new(normalVector, initialPoint);
-            MessageBox.Show(plane2D.equation.ToString());
+            List<Point3D> randomPointCloud = Point3DGenerator.GenerateRandomPoints(POINT_CLOUD_SIZE, WIDTH, HEIGHT);
+            Point3D basePoint = new(3,3,3);
+            Point3D normalVector = new(3,3,1);
+            Plane2D plane2D = new(normalVector, basePoint);
+            PointTransformation pointTransformation = CreatePointTransformation(plane2D);
 
-            /*double distanceToPlane = point.CalculateShortestDistanceToPlane(plane2D);
-            Point3D oppositeVectorNormalized = oppositeVector.normalize();
-            Point3D projectedPoint = oppositeVectorNormalized.Multiply(distanceToPlane).Add(point);
-            if (!plane2D.ContainsPoint(projectedPoint))
-            {
-                projectedPoint = normalVector.normalize().Multiply(distanceToPlane).Add(point);
-            }
-            
-            Point3D pedestalPlaneNormalizedVector = new(0, 0, 1);
-
-            Point3D axisVector = normalVector.CalculateCrossProduct(pedestalPlaneNormalizedVector);
-            Point3D intersectPoint = CalculateIntersectPointWithPedestalPlane(plane2D);
-            Point3D translatedProjectedPoint = projectedPoint.Subtract(intersectPoint);
-            Plane2D pedestalPlane = new(new(0, 0, 1), new(0, 0, 0));
-            double angle = plane2D.CalculateAngle(pedestalPlane);
-            Point3D rotatedPoint = RotatePointAroundArbitraryAxis(axisVector, translatedProjectedPoint, angle);
-            MessageBox.Show("" + rotatedPoint.ToString());*/
-            List<Point3D> projectedPointloud = ProjectPointCloudOnGround(plane2D, randomPointCloud);
-
-
-
-            /*List<Point3D> randomPointCloud = new();
-            for (int i = 0; i < HEIGHT; i += 50)
-            {
-                for (int j = 0; j < WIDTH; j += 50)
-                {
-                    randomPointCloud.Add(new(j, i, 12));
-                }
-            }*/
-            /*List<Point3D> projectedPointCloud = CalculatePointsOnSlope(0, randomPointCloud);
-            DelaunayTriangulation delaunayTriangulation = new();
-            ISet<DelaunayTriangle> triangulation = delaunayTriangulation.CreateTriangulation(projectedPointCloud);
-            //DrawTriangles(triangulation);
+            List<VoronoiPoint2D> projectedPointloud = ProjectPointCloudOnGround(plane2D, randomPointCloud, pointTransformation);
+            DelaunayTriangulation triangulationProcess = new DelaunayTriangulation();
+            ISet<DelaunayTriangle> triangulation = triangulationProcess.CreateTriangulation(projectedPointloud);
             VoronoiDiagram voronoi = new();
-            Dictionary<Point3D, VoronoiCell> voronoiDiagram = voronoi.CreateVoronoiDiagram(triangulation);
-            voronoiDiagram = CenterVoronoiDiagram(voronoiDiagram, 50);
-            DrawVoronoiCells(voronoiDiagram);
-            //Draw3DPoints(projectedPointCloud);*/
+            Dictionary<VoronoiPoint2D, VoronoiCell3D> diagram = voronoi.CreateVoronoiDiagram(triangulation);
+            diagram = CenterVoronoiDiagram(diagram, NUMBER_OF_ITERATIONS);
+            List<VoronoiCell3D> projectedDiagram = ProjectVoronoiCellsReversively(diagram, pointTransformation);
+
+
+            Point3D screenCenter = new(WIDTH / 2, HEIGHT / 2, 0);
+            Point3D averagePoint = CalculateAveragePoint(projectedDiagram);
+            Point3D translationVector = new(screenCenter.X - averagePoint.X,screenCenter.Y - averagePoint.Y, 0);
+            Translation transform = new();
+            transform.SetTranslation(translationVector);
+            Debug.WriteLine(averagePoint.ToString());
+            projectedDiagram = ProjectVoronoiCells(projectedDiagram, transform);
+            DrawVoronoiCells(projectedDiagram);
         }
 
-        private List<Point3D> ProjectPointCloudOnGround(Plane2D plane, List<Point3D> pointcloud)
+        private Point3D CalculateAveragePoint(List<VoronoiCell3D> cells)
         {
-            List<Point3D> projectedPointcloud = new();
+            double totalX = 0;
+            double totalY = 0;
+            double totalZ = 0;
+            int bound = Math.Max(WIDTH, HEIGHT) * 2;
+            foreach (VoronoiCell3D cell in cells) 
+            {
+                Point3D center = cell.getCenter();
+                if (Math.Abs(center.X) > bound || Math.Abs(center.Y) > bound || Math.Abs(center.Z) > bound)
+                {
+                    continue;
+                }
+                totalX += center.X;
+                totalY += center.Y;
+                totalZ += center.Z;
+                Debug.WriteLine(center.ToString() + " " + totalY);
+            }
+
+            double finalX = totalX / cells.Count;
+            double finalY = totalY / cells.Count;
+            double finalZ = totalZ / cells.Count;
+
+            return new(finalX, finalY, finalZ);
+        }
+
+        private PointTransformation CreatePointTransformation(Plane2D plane)
+        {
+            Point3D groundNormalVector = new(0,0,1);
+            Point3D initialPoint = new(0, 0, 0);
+            Point3D normalVector = plane.normalVector;
+            Plane2D groundPlane = new(groundNormalVector, initialPoint);
+
+            Point3D rotationAxisVector = normalVector.CalculateCrossProduct(groundNormalVector);
+            double angle = plane.CalculateAngle(groundPlane);
+            
+            Rotation rotation = new(rotationAxisVector, (float) angle);
+            Translation translation = new Translation();
+            Point3D? intersectPoint = CalculateIntersectVectorWithGround(plane);
+
+
+            if (intersectPoint != null)
+            {
+                translation.SetTranslation(intersectPoint.Multiply(-1));
+            }
+
+            return new(translation, rotation);
+
+        }
+
+        private List<VoronoiPoint2D> ProjectPointCloudOnGround(Plane2D plane, List<Point3D> pointcloud, PointTransformation pointTransformation)
+        {
+            List<VoronoiPoint2D> projectedPointcloud = new();
+            double epsilon = 1e-4;
             foreach (Point3D point in pointcloud)
             {
-                Point3D projectedPoint = ProjectPointOnGround(plane, point);
-                projectedPointcloud.Add(projectedPoint);
-                MessageBox.Show("pp: " + projectedPoint.ToString());
+                Point3D projectedPointOnPlane = ProjectPointOnPlane(plane, point);
+                Point3D projectedPoint = pointTransformation.Transform(projectedPointOnPlane);
+               
+                if (projectedPoint.Z < epsilon)
+                {
+                    VoronoiPoint2D projectedPointWithoutZAxe = new(projectedPoint.X, projectedPoint.Y);
+                    projectedPointcloud.Add(projectedPointWithoutZAxe);
+                } else
+                {
+                    MessageBox.Show(projectedPoint.ToString());
+                    Debug.WriteLine("Point projection did not go well - point " + point.ToString() + " was not displayed on ground properly.");
+                }
             }
 
             return projectedPointcloud;
         }
 
-
-
-        private Point3D ProjectPointOnGround(Plane2D plane, Point3D point)
+        private Point3D ProjectPointOnPlane(Plane2D plane, Point3D point)
         {
             Point3D normalVector = plane.normalVector;
             Point3D oppositeVector = normalVector.GetOppositeVector();
@@ -105,24 +145,16 @@ namespace CVD
                 projectedPoint = normalVector.normalize().Multiply(distanceToPlane).Add(point);
             }
 
-            Point3D pedestalPlaneNormalizedVector = new(0, 0, 1);
-            Point3D axisVector = normalVector.CalculateCrossProduct(pedestalPlaneNormalizedVector);
-            Point3D intersectPoint = CalculateIntersectPointWithPedestalPlane(plane);
-            Point3D translatedProjectedPoint = projectedPoint.Subtract(intersectPoint);
-
-            Plane2D pedestalPlane = new(new(0, 0, 1), new(0, 0, 0));
-            double angle = plane.CalculateAngle(pedestalPlane);
-            return RotatePointAroundArbitraryAxis(axisVector, translatedProjectedPoint, angle);
-        } 
-
-        private Point3D CalculateIntersectPointWithPedestalPlane(Plane2D plane)
+            return projectedPoint;
+        }
+        private Point3D? CalculateIntersectVectorWithGround(Plane2D plane)
         {
             double a = plane.equation.A;
             double b = plane.equation.B;
             double d = plane.equation.D;
             if (a == 0 && b == 0)
             {
-                return new(0,0,0);
+                return null;
             }
             if (b == 0)
             {
@@ -133,45 +165,7 @@ namespace CVD
             return new(x, y, 0);
         }
 
-        /**
-         * Angle has to be defined in RADIANS
-         */
-        private Point3D RotatePointAroundArbitraryAxis(Point3D axis, Point3D point, double angle)
-        {
-            Point3D axisNormalized = axis.normalize();
-            double x = axisNormalized.X;
-            double y = axisNormalized.Y;
-            double z = axisNormalized.Z;
-            double cosAngle = Math.Cos(angle);
-            double sinAngle = Math.Sin(angle);
-            Point3D[] rotationMatrix = { new(cosAngle + x*x*(1 - cosAngle), x*y*(1-cosAngle) - z*sinAngle, x*z*(1-cosAngle) + y*sinAngle),
-                new(y*x*(1-cosAngle) + z*(sinAngle), cosAngle+y*y*(1-cosAngle), y*z*(1-cosAngle) - x*sinAngle),
-                new(z*x*(1-cosAngle)-y*sinAngle, z*y*(1-cosAngle)+x*sinAngle, cosAngle + z*z*(1-cosAngle))};
-            return Rotate(rotationMatrix, point);
-        }
-
-        private Point3D Rotate(Point3D[] rotationMatrix, Point3D vectorToRotate)
-        {
-            double first = rotationMatrix[0].CalculateScalarProduct(vectorToRotate);
-            double second = rotationMatrix[1].CalculateScalarProduct(vectorToRotate);
-            double third = rotationMatrix[2].CalculateScalarProduct(vectorToRotate);
-            
-
-            return new(first, second, third);
-        }
-
-
-
-        private void Draw3DPoints(List<Point3D> points)
-        {
-            Brush brush = new SolidBrush(Color.Black);
-            foreach (Point3D point in points)
-            {
-                Draw3DPoints(brush, point);
-            }
-        }
-
-        private void Draw3DPoints(Brush brush, Point3D point)
+        private void Draw3DPoint(Brush brush, Point3D point)
         {
             int pointWidth = 4;
             int pointHeight = 4;
@@ -181,30 +175,7 @@ namespace CVD
             }
         }
 
-        private List<Point3D> CalculatePointsOnSlope(double slopeDegreesAngle, List<Point3D> points)
-        {
-            double angle = slopeDegreesAngle * (Math.PI / 180);
-
-            List<Point3D> newPoints = new();
-            foreach (Point3D point in points)
-            {
-                double x = point.X;
-                double y = point.Y;
-
-                double newX = x * Math.Cos(angle);
-                double newY = y;
-                double newZ = x * Math.Tan(angle);
-                Point3D newPoint = new(newX, newY, newZ);
-                newPoints.Add(newPoint);
-            }
-
-            return newPoints;
-
-        }
-
-
-
-        private Dictionary<Point3D, VoronoiCell> CalculateVoronoiDiagram(List<Point3D> points)
+        private Dictionary<VoronoiPoint2D, VoronoiCell3D> CalculateVoronoiDiagram(List<VoronoiPoint2D> points)
         {
             DelaunayTriangulation delaunayTriangulation = new();
             ISet<DelaunayTriangle> triangulation = delaunayTriangulation.CreateTriangulation(points);
@@ -213,72 +184,112 @@ namespace CVD
             return voronoi.CreateVoronoiDiagram(triangulation);
         }
 
-        private Dictionary<Point3D, VoronoiCell> CenterVoronoiDiagram(Dictionary<Point3D, VoronoiCell> voronoiDiagram, int numberOfIterations)
+        private Dictionary<VoronoiPoint2D, VoronoiCell3D> CenterVoronoiDiagram(Dictionary<VoronoiPoint2D, VoronoiCell3D> voronoiDiagram, int numberOfIterations)
         {
-            List<Point3D> newPoints = new();
             for (int i = 0; i < numberOfIterations; i++)
             {
-                newPoints = new();
-                foreach (VoronoiCell cell in voronoiDiagram.Values)
+                List<VoronoiPoint2D> newPoints = new();
+                foreach (VoronoiCell3D cell in voronoiDiagram.Values)
                 {
                     newPoints.Add(CalculateCenterOfGravity(cell));
                 }
                 voronoiDiagram = CalculateVoronoiDiagram(newPoints);
             }
-            DrawVoronoiCells(voronoiDiagram);
-            Draw3DPoints(newPoints);
-            
-           
+
             return voronoiDiagram;
         }
 
-        private Point3D CalculateCenterOfGravity(VoronoiCell voronoiCell)
+        private List<VoronoiCell3D> ProjectVoronoiCellsReversively(Dictionary<VoronoiPoint2D, VoronoiCell3D> diagram, RevertableTransform transform)
+        {
+            List<VoronoiCell3D> projectedCells = new();
+            foreach (VoronoiCell3D voronoiCell in diagram.Values)
+            {
+                Point3D centerPoint = voronoiCell.getCenter();
+                List<Edge3D> cellEdges = voronoiCell.GetEdges();
+
+                Point3D projectedCenter = transform.RevertTransform(centerPoint);
+                VoronoiCell3D projectedCell = new(projectedCenter);
+
+                foreach (Edge3D cellEdge in cellEdges)
+                {
+                    Point3D projectedStartingVertex = transform.RevertTransform(cellEdge.startingPoint);
+                    Point3D projectedEndingVertex = transform.RevertTransform(cellEdge.endingPoint);
+                    Edge3D projectedEdge = new(projectedStartingVertex, projectedEndingVertex);
+                    projectedCell.AddEdge(projectedEdge);
+                }
+
+                projectedCells.Add(projectedCell);
+            }
+
+            return projectedCells;
+        }
+
+        private List<VoronoiCell3D> ProjectVoronoiCells(List<VoronoiCell3D> cells, Transform transform)
+        {
+            List<VoronoiCell3D> projectedCells = new();
+            foreach (VoronoiCell3D voronoiCell in cells)
+            {
+                Point3D centerPoint = voronoiCell.getCenter();
+                List<Edge3D> cellEdges = voronoiCell.GetEdges();
+
+                Point3D projectedCenter = transform.Transform(centerPoint);
+                VoronoiCell3D projectedCell = new(projectedCenter);
+
+                foreach (Edge3D cellEdge in cellEdges)
+                {
+                    Point3D projectedStartingVertex = transform.Transform(cellEdge.startingPoint);
+                    Point3D projectedEndingVertex = transform.Transform(cellEdge.endingPoint);
+                    Edge3D projectedEdge = new(projectedStartingVertex, projectedEndingVertex);
+                    projectedCell.AddEdge(projectedEdge);
+                }
+
+                projectedCells.Add(projectedCell);
+            }
+
+            return projectedCells;
+        }
+
+        private VoronoiPoint2D CalculateCenterOfGravity(VoronoiCell3D voronoiCell)
         {
             ISet<Point3D> vertices = voronoiCell.getVertices();
             int verticesSize = vertices.Count;
             double findingX = 0;
             double findingY = 0;
-            double findingZ = 0;
             foreach (Point3D vertex in vertices)
             {
                 if (Math.Abs(vertex.X) > WIDTH || Math.Abs(vertex.Y) > HEIGHT)
                 {
-                    return voronoiCell.getCenter();
+                    Point3D centerPoint = voronoiCell.getCenter();
+                    return new(centerPoint.X, centerPoint.Y);
                 }
+
                 findingX += vertex.X;
                 findingY += vertex.Y;
-                findingZ += vertex.Z;
             }
 
-            return new(findingX / verticesSize, findingY / verticesSize, findingZ);
+            return new(findingX / verticesSize, findingY / verticesSize);
         }
 
-        private void DrawVoronoiCells(Dictionary<Point3D, VoronoiCell> voronoiCells)
+        private void DrawVoronoiCells(ICollection<VoronoiCell3D> voronoiCells)
         {
             Pen pen = new(Color.Blue);
-            foreach (VoronoiCell cell in voronoiCells.Values)
+            Brush pointPen = new SolidBrush(Color.Black);
+            foreach (VoronoiCell3D cell in voronoiCells)
             {             
-                DrawVoronoiCell(pen, cell);
+                DrawVoronoiCell(pen, pointPen, cell);
             }
         }
 
-        private void DrawVoronoiCell(Pen pen, VoronoiCell cell)
+        private void DrawVoronoiCell(Pen pen, Brush pointPen, VoronoiCell3D cell)
         {
-            foreach (Edge vertex in cell.GetEdges())
+            foreach (Edge3D vertex in cell.GetEdges())
             {
-              
                 graphicsContext.DrawLine(pen,
                     new((int) vertex.startingPoint.X, (int) vertex.startingPoint.Y),
                     new((int) vertex.endingPoint.X, (int) vertex.endingPoint.Y));
             }
-        }
 
-        private void DrawPoints(List<VoronoiPoint2D> points)
-        {
-            Brush brush = new SolidBrush(Color.Black);
-            foreach(VoronoiPoint2D point in points) {
-                DrawPoint(brush, point);
-            }
+            Draw3DPoint(pointPen, cell.getCenter());
         }
 
         private void DrawTriangles(ICollection<DelaunayTriangle> triangles)
@@ -287,17 +298,6 @@ namespace CVD
             foreach(DelaunayTriangle triangle in triangles)
             {
                 DrawTriangle(pen, triangle);
-            }
-        }
-
-        private void DrawPoint(Brush brush, VoronoiPoint2D point)
-        {
-
-            int pointWidth = 4;
-            int pointHeight = 4;
-            if (point.X > 0 && point.Y > 0)
-            {
-                graphicsContext.FillEllipse(brush, (int)point.X - pointWidth / 2, (int)point.Y - pointHeight / 2, pointWidth, pointHeight);
             }
         }
 

@@ -1,6 +1,6 @@
-﻿using VoronoiDiagrams;
+﻿using CVD.voronoi;
 
-namespace CVD
+namespace CVD.util
 {
     internal class ClockwisePointComparator : IComparer<VoronoiPoint2D>
     {

@@ -1,10 +1,10 @@
-﻿
-using CVD;
+﻿using CVD.util;
 
-namespace VoronoiDiagrams
+namespace CVD.shape
 {
-   
-    internal class Point3D {
+
+    internal class Point3D
+    {
         public readonly double X;
         public readonly double Y;
         public readonly double Z;
@@ -44,7 +44,7 @@ namespace VoronoiDiagrams
 
         public double CalculateLength()
         {
-            return Math.Sqrt(X*X + Y*Y + Z*Z);
+            return Math.Sqrt(X * X + Y * Y + Z * Z);
         }
 
         public double CalculateShortestDistanceToPlane(Plane2D plane)
@@ -67,7 +67,7 @@ namespace VoronoiDiagrams
 
         public double CalculateDistanceFromOriginOfCoordinateSystem()
         {
-            return Math.Sqrt((X * X) + (Y * Y) + (Z * Z));
+            return Math.Sqrt(X * X + Y * Y + Z * Z);
         }
 
         public Point3D Multiply(double multiplicator)

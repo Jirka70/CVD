@@ -1,33 +1,35 @@
-﻿using VoronoiDiagrams;
+﻿using CVD.shape;
 
-namespace CVD
+namespace CVD.voronoi
 {
-    internal class VoronoiCell
+    internal class VoronoiCell3D
     {
-        private readonly List<Edge> edges = new();
+        private readonly List<Edge3D> edges = new();
         private readonly ISet<Point3D> vertices = new HashSet<Point3D>();
 
         private readonly Point3D center;
 
 
-        public VoronoiCell(Point3D center)
+        public VoronoiCell3D(Point3D center)
         {
             this.center = center;
         }
 
-        public void AddEdge(Edge edge)
+        public void AddEdge(Edge3D edge)
         {
             edges.Add(edge);
-            vertices.Add(edge.startingPoint);
-            vertices.Add(edge.endingPoint);
+            Point3D startingPoint = new(edge.startingPoint.X, edge.startingPoint.Y, 0);
+            Point3D endingPoint = new(edge.endingPoint.X, edge.endingPoint.Y, 0);
+            vertices.Add(startingPoint);
+            vertices.Add(endingPoint);
         }
 
         public ISet<Point3D> getVertices() { return vertices; }
 
         public override bool Equals(object? obj)
         {
-            return obj is VoronoiCell cell &&
-                   EqualityComparer<List<Edge>>.Default.Equals(edges, cell.edges) &&
+            return obj is VoronoiCell3D cell &&
+                   EqualityComparer<List<Edge3D>>.Default.Equals(edges, cell.edges) &&
                    EqualityComparer<Point3D>.Default.Equals(center, cell.center);
         }
 
@@ -41,11 +43,9 @@ namespace CVD
             return HashCode.Combine(vertices, center);
         }
 
-        public List<Edge> GetEdges() 
-        { 
+        public List<Edge3D> GetEdges()
+        {
             return edges;
         }
-
-        
     }
 }

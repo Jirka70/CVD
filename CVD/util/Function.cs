@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using VoronoiDiagrams;
+using CVD.shape;
 
-namespace CVD
+namespace CVD.util
 {
     internal class Function
     {
@@ -25,7 +25,7 @@ namespace CVD
 
         public double CalculateValueOfPoint(Point3D point)
         {
-            return A*point.X + B*point.Y + C*point.Z + D;
+            return A * point.X + B * point.Y + C * point.Z + D;
         }
 
         public override string? ToString()

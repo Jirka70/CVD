@@ -1,5 +1,4 @@
-﻿
-namespace CVD
+﻿namespace CVD.voronoi
 {
     internal interface VoronoiShape
     {
