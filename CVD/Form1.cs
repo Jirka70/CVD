@@ -1,19 +1,19 @@
 using System.Diagnostics;
-using System.Net.Http.Headers;
-using System.Numerics;
+using System.Drawing;
 using CVD.delaunay;
 using CVD.shape;
 using CVD.transform;
 using CVD.transforms;
 using CVD.util;
 using CVD.voronoi;
+using static System.Windows.Forms.DataFormats;
 
 namespace CVD
 {
     public partial class VoronoiForm : Form
     {
         private static readonly int POINT_CLOUD_SIZE = 420;
-        private static readonly int NUMBER_OF_ITERATIONS = 50;
+        private static readonly int NUMBER_OF_ITERATIONS = 100;
 
         private readonly Graphics graphicsContext;
         private readonly PictureBox canvasBox = new();
@@ -34,9 +34,15 @@ namespace CVD
 
         private void VoronoiProcess()
         {
+            //Point3D basePoint = new(3,3,3);
+            //Point3D normalVector = new(1,1,1);
+            //DrawPlane(normalVector, basePoint);
+
+
+
             List<Point3D> randomPointCloud = Point3DGenerator.GenerateRandomPoints(POINT_CLOUD_SIZE, WIDTH, HEIGHT);
-            Point3D basePoint = new(3,3,3);
-            Point3D normalVector = new(3,3,1);
+            Point3D basePoint = new(0,0,0);
+            Point3D normalVector = new(1,1,1);
             Plane2D plane2D = new(normalVector, basePoint);
             PointTransformation pointTransformation = CreatePointTransformation(plane2D);
 
@@ -50,13 +56,188 @@ namespace CVD
 
 
             Point3D screenCenter = new(WIDTH / 2, HEIGHT / 2, 0);
+            
+            //Debug.WriteLine(averagePoint.ToString());
+            
+            projectedDiagram = ProjectVoronoiCellsOnPlane(basePoint, normalVector, projectedDiagram);
             Point3D averagePoint = CalculateAveragePoint(projectedDiagram);
-            Point3D translationVector = new(screenCenter.X - averagePoint.X,screenCenter.Y - averagePoint.Y, 0);
+            Point3D translationVector = new(screenCenter.X - averagePoint.X, screenCenter.Y - averagePoint.Y, 0);
             Translation transform = new();
             transform.SetTranslation(translationVector);
-            Debug.WriteLine(averagePoint.ToString());
             projectedDiagram = ProjectVoronoiCells(projectedDiagram, transform);
             DrawVoronoiCells(projectedDiagram);
+        }
+
+        private List<VoronoiCell3D> ProjectVoronoiCellsOnPlane(Point3D basePoint, Point3D normalVector, List<VoronoiCell3D> voronoiCells)
+        {
+            float angleX = 60;
+            float angleY = 0;
+            float angleZ = 0;
+            List<VoronoiCell3D> projectedCells = new();
+            Func<Point3D, Point3D> rotate = (p) =>
+            {
+                // Convert angles to radians
+                float radX = angleX * (float)Math.PI / 180;
+                float radY = angleY * (float)Math.PI / 180;
+                float radZ = angleZ * (float)Math.PI / 180;
+
+                // Rotate around X axis
+                double y1 = p.Y * (float)Math.Cos(radX) - p.Z * (float)Math.Sin(radX);
+                double z1 = p.Y * (float)Math.Sin(radX) + p.Z * (float)Math.Cos(radX);
+
+                // Rotate around Y axis
+                double x2 = p.X * (float)Math.Cos(radY) + z1 * (float)Math.Sin(radY);
+                double z2 = -p.X * (float)Math.Sin(radY) + z1 * (float)Math.Cos(radY);
+
+                // Rotate around Z axis
+                double x3 = x2 * (float)Math.Cos(radZ) - y1 * (float)Math.Sin(radZ);
+                double y3 = x2 * (float)Math.Sin(radZ) + y1 * (float)Math.Cos(radZ);
+
+                return new Point3D(x3, y3, z2);
+            };
+
+            Func<Point3D, Point> project = (p) =>
+            {
+                float scale = 1; // Scale factor for better visualization
+                return new Point((int)(WIDTH / 2 + p.X * scale),
+                    (int)(HEIGHT / 2 - p.Y * scale)
+                );
+            };
+            foreach (VoronoiCell3D voronoiCell in voronoiCells)
+            {
+                VoronoiCell3D projectedCell = ProjectVoronoiCell(basePoint, normalVector, rotate, project, voronoiCell); 
+                projectedCells.Add(projectedCell);
+            }
+
+            DrawAxis(project, rotate, Color.Red, new Point3D(-500, 0, 0), new Point3D(500, 0, 0));
+            DrawAxis(project, rotate, Color.Green, new Point3D(0, -500, 0), new Point3D(0, 500, 0));
+            DrawAxis(project, rotate, Color.Blue, new Point3D(0, -500, -500), new Point3D(0, -500, -500));
+
+
+            return projectedCells;
+        }
+
+        private VoronoiCell3D ProjectVoronoiCell(Point3D basePoint, Point3D normalVector, Func<Point3D, Point3D> rotate, Func<Point3D, Point> project, VoronoiCell3D voronoiCell)
+        {
+            Point3D center = voronoiCell.getCenter();
+            List<Edge3D> edges = voronoiCell.GetEdges();
+
+            List<Edge3D> projectedEdges = new();
+            foreach (Edge3D edge in edges)
+            {
+                Edge3D projectedEdge = ProjectVoronoiEdge(basePoint, normalVector, rotate, project, edge);
+                projectedEdges.Add(projectedEdge);
+            }
+            Point projectCenter = ProjectPoint(basePoint, normalVector, rotate, project, center);
+            Point3D cntr = new(projectCenter.X, projectCenter.Y, 0);
+
+            return new(cntr, projectedEdges);
+        }
+
+        private Point ProjectPoint(Point3D basePoint, Point3D normalVector, Func<Point3D, Point3D> rotate, Func<Point3D, Point> project, Point3D pointToProject)
+        {
+            double z = (normalVector.X * (pointToProject.X - basePoint.X) + normalVector.Y * (pointToProject.Y - basePoint.Y)) / -normalVector.Z + basePoint.Z;
+            Point3D p = new Point3D(pointToProject.X, pointToProject.Y, z);
+            Point3D rotatedPoint = rotate(p);
+            Debug.WriteLine(project(rotatedPoint));
+            return project(rotatedPoint);
+        }
+
+        private Edge3D ProjectVoronoiEdge(Point3D basePoint, Point3D normalVector, Func<Point3D, Point3D> rotate, Func<Point3D, Point> project, Edge3D edgeToProject)
+        {
+            Point3D start = edgeToProject.startingPoint;
+            Point3D end = edgeToProject.endingPoint;
+            
+            Point projectedStart = ProjectPoint(basePoint, normalVector, rotate, project, start);  
+            Point projectedEnd = ProjectPoint(basePoint, normalVector, rotate, project, end);
+
+            Point3D pS = new(projectedStart.X, projectedStart.Y, 0);
+            Point3D pE = new(projectedEnd.X, projectedEnd.Y, 0);
+            return new(pS, pE);
+        }
+
+        private void DrawPlane(Point3D normal, Point3D point)
+        {
+            float angleX = 0;
+            float angleY = 45;
+            float angleZ = 0;
+
+            Plane2D plane = new(normal, point);
+            Function planeEquation = plane.equation;
+
+            Func<Point3D, Point3D> rotate = (p) =>
+            {
+                // Convert angles to radians
+                float radX = angleX * (float)Math.PI / 180;
+                float radY = angleY * (float)Math.PI / 180;
+                float radZ = angleZ * (float)Math.PI / 180;
+
+                // Rotate around X axis
+                double y1 = p.Y * (float)Math.Cos(radX) - p.Z * (float)Math.Sin(radX);
+                double z1 = p.Y * (float)Math.Sin(radX) + p.Z * (float)Math.Cos(radX);
+
+                // Rotate around Y axis
+                double x2 = p.X * (float)Math.Cos(radY) + z1 * (float)Math.Sin(radY);
+                double z2 = -p.X * (float)Math.Sin(radY) + z1 * (float)Math.Cos(radY);
+
+                // Rotate around Z axis
+                double x3 = x2 * (float)Math.Cos(radZ) - y1 * (float)Math.Sin(radZ);
+                double y3 = x2 * (float)Math.Sin(radZ) + y1 * (float)Math.Cos(radZ);
+
+                return new Point3D(x3, y3, z2);
+            };
+
+            Func<Point3D, Point> project = (p) =>
+            {
+                float scale = 30; // Scale factor for better visualization
+                return new Point(
+                    (int)(WIDTH / 2 + p.X * scale),
+                    (int)(HEIGHT / 2 - p.Y * scale)
+                );
+            };
+
+            // Draw axes
+            DrawAxis(project, rotate, Color.Red, new Point3D(-5, 0, 0), new Point3D(5, 0, 0));
+            DrawAxis(project, rotate, Color.Green, new Point3D(0, -5, 0), new Point3D(0, 5, 0));
+            DrawAxis(project, rotate, Color.Blue, new Point3D(0, -5, -5), new Point3D(0, -5, -5));
+
+            // Calculate points on the plane
+            for (float x = -5; x <= 5; x += 0.1f)
+            {
+                for (float y = -5; y <= 5; y += 0.1f)
+                {
+                    double z = (normal.X * (x - point.X) + normal.Y * (y - point.Y)) / -normal.Z + point.Z;
+                    Point3D p = new Point3D(x, y, z);
+                    Point3D rotatedPoint = rotate(p);
+                    Point p2D = project(rotatedPoint);
+                    if (p2D.X >= 0 && p2D.X < WIDTH && p2D.Y >= 0 && p2D.Y < HEIGHT)
+                    {
+                        ((Bitmap)canvasBox.Image).SetPixel(p2D.X, p2D.Y, Color.Black);
+                    }
+                }
+            }
+        }
+
+        private void DrawAxis(Func<Point3D, Point> project, Func<Point3D, Point3D> rotate, Color color, Point3D start, Point3D end)
+        {
+            using (Pen pen = new Pen(color, 2))
+            {
+                Point3D rotatedStart = rotate(start);
+                Point3D rotatedEnd = rotate(end);
+                graphicsContext.DrawLine(pen, project(rotatedStart), project(rotatedEnd));
+
+                for (float i = -5; i <= 5; i++)
+                {
+                    Point3D tickStart = new Point3D(start.X + i * (end.X - start.X) / 10, start.Y + i * (end.Y - start.Y) / 10, start.Z + i * (end.Z - start.Z) / 10);
+                    Point3D tickEnd = new Point3D(tickStart.X, tickStart.Y, tickStart.Z);
+                    tickEnd.X += 0.1f * (end.Y - start.Y);
+                    tickEnd.Y += 0.1f * (end.Z - start.Z);
+                    tickEnd.Z += 0.1f * (end.X - start.X);
+                    Point3D rotatedTickStart = rotate(tickStart);
+                    Point3D rotatedTickEnd = rotate(tickEnd);
+                    //graphicsContext.DrawLine(pen, project(rotatedTickStart), project(rotatedTickEnd));
+                }
+            }
         }
 
         private Point3D CalculateAveragePoint(List<VoronoiCell3D> cells)
@@ -75,7 +256,6 @@ namespace CVD
                 totalX += center.X;
                 totalY += center.Y;
                 totalZ += center.Z;
-                Debug.WriteLine(center.ToString() + " " + totalY);
             }
 
             double finalX = totalX / cells.Count;

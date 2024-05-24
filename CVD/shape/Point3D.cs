@@ -5,9 +5,9 @@ namespace CVD.shape
 
     internal class Point3D
     {
-        public readonly double X;
-        public readonly double Y;
-        public readonly double Z;
+        public double X;
+        public double Y;
+        public double Z;
 
         public Point3D(double x, double y, double z)
         {

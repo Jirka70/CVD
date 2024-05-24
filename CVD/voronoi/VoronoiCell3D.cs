@@ -15,6 +15,16 @@ namespace CVD.voronoi
             this.center = center;
         }
 
+        public VoronoiCell3D(Point3D center, List<Edge3D> edges) {
+            this.edges = edges;
+            this.center = center;
+            foreach (Edge3D edge in edges)
+            {
+                vertices.Add(edge.startingPoint);
+                vertices.Add(edge.endingPoint);
+            }
+        }
+
         public void AddEdge(Edge3D edge)
         {
             edges.Add(edge);
