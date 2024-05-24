@@ -30,7 +30,12 @@ namespace CVD.util
 
         public override string? ToString()
         {
-            return A + "x + (" + B + ")y + (" + C + ")z + (" + D + ") = 0s";
+            return A + "x + (" + B + ")y + (" + C + ")z + (" + D + ") = 0";
+        }
+
+        public double CalculateZValue(double x, double y)
+        {
+            return (-A * x - B * y - D) / C; 
         }
     }
 }
