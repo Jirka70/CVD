@@ -25,10 +25,16 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(WIDTH, HEIGHT);
-            this.Text = "Voronoi Diagrams - Jiri Tresohlavy";
+            SuspendLayout();
+            // 
+            // VoronoiForm
+            // 
+            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
+            ClientSize = new Size(863, 494);
+            Name = "VoronoiForm";
+            Text = "Voronoi Diagrams - Jiri Tresohlavy";
+            ResumeLayout(false);
         }
 
         #endregion

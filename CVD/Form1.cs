@@ -1,7 +1,4 @@
 using System.Diagnostics;
-using System.Drawing;
-using System.Numerics;
-using System.Windows.Forms;
 using CVD.delaunay;
 using CVD.shape;
 using CVD.transform;
@@ -16,8 +13,14 @@ namespace CVD
         private static readonly int POINT_CLOUD_SIZE = 420;
         private static readonly int NUMBER_OF_ITERATIONS = 100;
 
+        private readonly TextBox xAngleTextBox = new();
+        private readonly TextBox yAngleTextBox = new();
+        private readonly TextBox zAngleTextBox = new();
+        private readonly Button applyButton = new();
+
         private readonly Graphics graphicsContext;
         private readonly PictureBox canvasBox = new();
+        private readonly Dictionary<VoronoiPoint2D, VoronoiCell3D> diagram;
 
 
         public VoronoiForm()
@@ -25,24 +28,168 @@ namespace CVD
             InitializeComponent();
             canvasBox.Image = new Bitmap(WIDTH, HEIGHT);
             canvasBox.Size = new Size(WIDTH, HEIGHT);
-            canvasBox.Location = new Point(0,0);
+            canvasBox.Location = new Point(0, 0);
             Controls.Add(canvasBox);
-            Bitmap image = (Bitmap) canvasBox.Image;
+
+            PictureBox box = new PictureBox();
+            box.Size = new Size(100, 100);
+            box.Location = new Point(0, 0);
+            box.Image = new Bitmap(100, 100);
+            Controls.Add(box);
+            Bitmap image = (Bitmap)canvasBox.Image;
             graphicsContext = Graphics.FromImage(image);
+
+            Label xAngleLabel = new();
+            Label yAngleLabel = new();
+            Label zAngleLabel = new();
+
+            SetUpLabel(xAngleLabel, "X Angle", 0);
+            xAngleTextBox.Location = new Point(200, 200);
+            xAngleTextBox.Text = "piko";
+            Controls.Add(xAngleTextBox);
+
+            SetUpLabel(xAngleLabel, "X Angle", 0);
+            SetUpTextBox(xAngleTextBox, 0);
+
+            SetUpLabel(yAngleLabel, "Y Angle", 1);
+            SetUpTextBox(yAngleTextBox, 1);
+
+            SetUpLabel(zAngleLabel, "Z Angle", 2);
+            SetUpTextBox(zAngleTextBox, 2);
+
+            SetUpButton(applyButton, "Apply", 3);
+
+            applyButton.Click += ApplyButton_Click;
+
+
+
+            Text = "3D Voronoi Projection";
+
+            // Set initial angles and hook up the event
+            xAngleTextBox.Text = "30";
+            yAngleTextBox.Text = "30";
+            zAngleTextBox.Text = "30";
 
             VoronoiProcess();
         }
 
+        private void SetUpLabel(Label label, string labelText, int rowNumber)
+        {
+            int rowHeight = 30;
+            label.Text = labelText;
+            label.Location = new Point(10, rowHeight * rowNumber + 10);
+            label.AutoSize = true;
+            label.BackColor = Color.Transparent; // Make the label background transparent
+            canvasBox.Controls.Add(label);
+        }
+
+        private void ApplyButton_Click(object sender, EventArgs e)
+        {
+            if (float.TryParse(xAngleTextBox.Text, out float x) &&
+                float.TryParse(yAngleTextBox.Text, out float y) &&
+                float.TryParse(zAngleTextBox.Text, out float z))
+            {
+                //RedrawGraphics(x, y, z);
+            }
+            else
+            {
+                MessageBox.Show("Please enter valid angle values.", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ApplyRotation(float angleX, float angleY, float angleZ)
+        {
+            Func<Point3D, Point3D> rotate = (p) =>
+            {
+                float radX = angleX * (float)Math.PI / 180;
+                float radY = angleY * (float)Math.PI / 180;
+                float radZ = angleZ * (float)Math.PI / 180;
+
+                double y1 = p.Y * (float)Math.Cos(radX) - p.Z * (float)Math.Sin(radX);
+                double z1 = p.Y * (float)Math.Sin(radX) + p.Z * (float)Math.Cos(radX);
+
+                double x2 = p.X * (float)Math.Cos(radY) + z1 * (float)Math.Sin(radY);
+                double z2 = -p.X * (float)Math.Sin(radY) + z1 * (float)Math.Cos(radY);
+
+                double x3 = x2 * (float)Math.Cos(radZ) - y1 * (float)Math.Sin(radZ);
+                double y3 = x2 * (float)Math.Sin(radZ) + y1 * (float)Math.Cos(radZ);
+
+                return new Point3D(x3, y3, z2);
+            };
+
+            Func<Point3D, Point3D> project = (p) =>
+            {
+                float scale = .5f;
+                double x = WIDTH / 2 + p.X * scale;
+                double y = HEIGHT / 2 - p.Y * scale;
+                return new(
+                    x,
+                    y, 0);
+            };
+
+            graphicsContext.Clear(Color.White);
+
+        }
+
+
+        private void SetUpTextBox(TextBox textBox, int rowNumber)
+        {
+            int rowHeight = 30;
+            textBox.Location = new Point(80, rowHeight * rowNumber + 10);
+            textBox.Size = new Size(100, 20);
+            canvasBox.Controls.Add(textBox);
+        }
+
+        private void SetUpButton(Button button, string buttonText, int rowNumber)
+        {
+            int rowHeight = 30;
+            button.Text = buttonText;
+            button.Location = new Point(10, rowHeight * rowNumber + 10);
+            button.Size = new Size(170, 30);
+            canvasBox.Controls.Add(button);
+        }
+
         private void VoronoiProcess()
         {
-            /*Point3D basePoint = new(1,1,1);
-            Point3D normalVector = new(1,1,1);
-            DrawPlane(normalVector, basePoint);*/
+
+            Point3D basePoint = new(1, 1, 1);
+            Point3D normalVector = new(1, 1, 1);
+            Plane2D plane2D = new(normalVector, basePoint);
+
+            Function planeEquation = plane2D.equation;
+            float angleX = 0;
+            float angleY = 30;
+            float angleZ = 0;
+            Func<Point3D, Point3D> rotate = (p) =>
+            {
+                float radX = angleX * (float)Math.PI / 180;
+                float radY = angleY * (float)Math.PI / 180;
+                float radZ = angleZ * (float)Math.PI / 180;
+
+                double y1 = p.Y * (float)Math.Cos(radX) - p.Z * (float)Math.Sin(radX);
+                double z1 = p.Y * (float)Math.Sin(radX) + p.Z * (float)Math.Cos(radX);
+
+                double x2 = p.X * (float)Math.Cos(radY) + z1 * (float)Math.Sin(radY);
+                double z2 = -p.X * (float)Math.Sin(radY) + z1 * (float)Math.Cos(radY);
+
+                double x3 = x2 * (float)Math.Cos(radZ) - y1 * (float)Math.Sin(radZ);
+                double y3 = x2 * (float)Math.Sin(radZ) + y1 * (float)Math.Cos(radZ);
+
+                return new Point3D(x3, y3, z2);
+            };
+
+            Func<Point3D, Point3D> project = (p) =>
+            {
+                float scale = .5f;
+                double x = WIDTH / 2 + p.X * scale;
+                double y = HEIGHT / 2 - p.Y * scale;
+                return new(
+                    x,
+                    y, 0);
+            };
 
             List<Point3D> randomPointCloud = Point3DGenerator.GenerateRandomPoints(POINT_CLOUD_SIZE, WIDTH, HEIGHT);
-            Point3D basePoint = new(1,1,1);
-            Point3D normalVector = new(1,1,1);
-            Plane2D plane2D = new(normalVector, basePoint);
+           
             Debug.WriteLine(plane2D.equation);
             PointTransformation pointTransformation = CreatePointTransformation(plane2D);
 
@@ -55,59 +202,20 @@ namespace CVD
             List<VoronoiCell3D> projectedDiagram = ProjectVoronoiCellsReversively(diagram, pointTransformation);
 
 
-            Point3D screenCenter = new(WIDTH / 2, HEIGHT / 2, 0);
-            
-            //Debug.WriteLine(averagePoint.ToString());
-            
-            projectedDiagram = ProjectVoronoiCellsOnPlane(plane2D, basePoint, normalVector, projectedDiagram);
+            projectedDiagram = ProjectVoronoiCellsOnPlane(plane2D, basePoint, rotate, project, normalVector, projectedDiagram);
             Point3D averagePoint = CalculateAveragePoint(projectedDiagram);
-            Point3D translationVector = new(screenCenter.X - averagePoint.X, screenCenter.Y - averagePoint.Y, 0);
-            Translation transform = new();
-            transform.SetTranslation(translationVector);
-            //projectedDiagram = ProjectVoronoiCells(projectedDiagram, transform);
+            
             DrawVoronoiCells(projectedDiagram);
-            DrawPlane(normalVector, basePoint);
+            DrawPlane(normalVector, basePoint, rotate, project);
         }
 
-        private List<VoronoiCell3D> ProjectVoronoiCellsOnPlane(Plane2D plane, Point3D basePoint, Point3D normalVector, List<VoronoiCell3D> voronoiCells)
+        private List<VoronoiCell3D> ProjectVoronoiCellsOnPlane(Plane2D plane, Point3D basePoint, Func<Point3D, Point3D> rotate, Func<Point3D, Point3D> project, Point3D normalVector, List<VoronoiCell3D> voronoiCells)
         {
             Point3D[] corners = CalculatePlaneCorners(basePoint, normalVector, 10f, 10f);
             Function planeEquation = plane.equation;
-            float angleX = 0;
-            float angleY = 30;
-            float angleZ = 0;
+            
             List<VoronoiCell3D> projectedCells = new();
-            Func<Point3D, Point3D> rotate = (p) =>
-            {
-                // Convert angles to radians
-                float radX = angleX * (float)Math.PI / 180;
-                float radY = angleY * (float)Math.PI / 180;
-                float radZ = angleZ * (float)Math.PI / 180;
-
-                // Rotate around X axis
-                double y1 = p.Y * (float)Math.Cos(radX) - p.Z * (float)Math.Sin(radX);
-                double z1 = p.Y * (float)Math.Sin(radX) + p.Z * (float)Math.Cos(radX);
-
-                // Rotate around Y axis
-                double x2 = p.X * (float)Math.Cos(radY) + z1 * (float)Math.Sin(radY);
-                double z2 = -p.X * (float)Math.Sin(radY) + z1 * (float)Math.Cos(radY);
-
-                // Rotate around Z axis
-                double x3 = x2 * (float)Math.Cos(radZ) - y1 * (float)Math.Sin(radZ);
-                double y3 = x2 * (float)Math.Sin(radZ) + y1 * (float)Math.Cos(radZ);
-
-                return new Point3D(x3, y3, z2);
-            };
-
-            Func<Point3D, Point3D> project = (p) =>
-            {
-               float scale = .5f;
-                double x = WIDTH / 2 + p.X * scale;
-                double y = HEIGHT / 2 - p.Y * scale;
-                return new(
-                    x,
-                    y, planeEquation.CalculateZValue(x,y));
-            };
+            
             foreach (VoronoiCell3D voronoiCell in voronoiCells)
             {
                 VoronoiCell3D projectedCell = ProjectVoronoiCell(basePoint, normalVector, corners, rotate, project, voronoiCell); 
@@ -149,8 +257,8 @@ namespace CVD
             double z = (normalVector.X * (pointToProject.X - basePoint.X) + normalVector.Y * (pointToProject.Y - basePoint.Y)) / -normalVector.Z + basePoint.Z;
             Point3D p = new(pointToProject.X, pointToProject.Y, z);
             Point3D projectedPoint = project(rotate(p));
+           // Debug.WriteLine(IsPointInRectangle(p, corners));
             return projectedPoint;
-
         }
 
         private Edge3D ProjectVoronoiEdge(Point3D basePoint, Point3D normalVector, Point3D[] corners, Func<Point3D, Point3D> rotate, Func<Point3D, Point3D> project, Edge3D edgeToProject)
@@ -162,65 +270,18 @@ namespace CVD
             Point3D projectedStart = ProjectPoint(basePoint, normalVector, corners, rotate, project, start);
             Point3D projectedEnd = ProjectPoint(basePoint, normalVector, corners, rotate, project, end);
 
-            //Point3D pS = new(projectedStart.X, projectedStart.Y, 0);
-            //Point3D pE = new(projectedEnd.X, projectedEnd.Y, 0);
-            /*if (!IsPointInRectangle(pS, corners))
-            {
-                pS = ProjectPointToEdge(pS, corners);
-            } else if (!IsPointInRectangle(pE, corners))
-            {
-                pE = ProjectPointToEdge(pE, corners);
-            }*/
             return new(projectedStart, projectedEnd);
         }
 
-        private void DrawPlane(Point3D normal, Point3D point)
+        private void DrawPlane(Point3D normal, Point3D point, Func<Point3D, Point3D> rotate, Func<Point3D, Point3D> project)
         {
             Point3D[] corners = CalculatePlaneCorners(point, normal, WIDTH, HEIGHT);
 
-            float angleX = 0;
-            float angleY = 30;
-            float angleZ = 0;
-
             Plane2D plane = new(normal, point);
 
-            Func<Point3D, Point3D> rotate = (p) =>
-            {
-                // Convert angles to radians
-                float radX = angleX * (float)Math.PI / 180;
-                float radY = angleY * (float)Math.PI / 180;
-                float radZ = angleZ * (float)Math.PI / 180;
+            
 
-                // Rotate around X axis
-                double y1 = p.Y * (float)Math.Cos(radX) - p.Z * (float)Math.Sin(radX);
-                double z1 = p.Y * (float)Math.Sin(radX) + p.Z * (float)Math.Cos(radX);
-
-                // Rotate around Y axis
-                double x2 = p.X * (float)Math.Cos(radY) + z1 * (float)Math.Sin(radY);
-                double z2 = -p.X * (float)Math.Sin(radY) + z1 * (float)Math.Cos(radY);
-
-                // Rotate around Z axis
-                double x3 = x2 * (float)Math.Cos(radZ) - y1 * (float)Math.Sin(radZ);
-                double y3 = x2 * (float)Math.Sin(radZ) + y1 * (float)Math.Cos(radZ);
-
-                return new Point3D(x3, y3, z2);
-            };
-
-            Func<Point3D, Point> project = (p) =>
-            {
-                float scale = .5f; // Scale factor for better visualization
-                return new Point(
-                    (int)(WIDTH / 2 + p.X * scale),
-                    (int)(HEIGHT / 2 - p.Y * scale)
-                );
-                
-            };
-
-            // Draw axes
-            //DrawAxis(project, rotate, Color.Red, new Point3D(-5, 0, 0), new Point3D(5, 0, 0));
-            //DrawAxis(project, rotate, Color.Green, new Point3D(0, -5, 0), new Point3D(0, 5, 0));
-            //DrawAxis(project, rotate, Color.Blue, new Point3D(0, 0, -5), new Point3D(0, 0, -5));
-            Color semiTransparentColor = Color.FromArgb(50, Color.LightBlue); // Alpha 128 is approximately 0.5 transparency
+            Color semiTransparentColor = Color.FromArgb(50, Color.LightBlue);
             Brush semiTransparentBrush = new SolidBrush(semiTransparentColor);
 
             Point3D v1 = new Point3D(corners[1].X - corners[0].X, corners[1].Y - corners[0].Y, corners[1].Z - corners[0].Z);
@@ -237,7 +298,7 @@ namespace CVD
                     );
 
                     Point3D rotatedPoint = rotate(p);
-                    Point p2D = project(rotatedPoint);
+                    Point3D p2D = project(rotatedPoint);
 
                     if (p2D.X >= 0 && p2D.X < WIDTH && p2D.Y >= 0 && p2D.Y < HEIGHT)
                     {
@@ -311,9 +372,9 @@ namespace CVD
             };
 
             // Calculate vectors from corners
-            Point3D v0 = new Point3D(projectedCorners[3].X - projectedCorners[0].X, projectedCorners[3].Y - projectedCorners[0].Y,0);
-            Point3D v1 = new Point3D(projectedCorners[1].X - projectedCorners[0].X, projectedCorners[1].Y - projectedCorners[0].Y,0);
-            Point3D v2 = new Point3D(projectedP.X - projectedCorners[0].X, projectedP.Y - projectedCorners[0].Y,0);
+            Point3D v0 = new Point3D(projectedCorners[3].X - projectedCorners[0].X, projectedCorners[3].Y - projectedCorners[0].Y, 0);
+            Point3D v1 = new Point3D(projectedCorners[1].X - projectedCorners[0].X, projectedCorners[1].Y - projectedCorners[0].Y, 0);
+            Point3D v2 = new Point3D(projectedP.X - projectedCorners[0].X, projectedP.Y - projectedCorners[0].Y, 0);
 
             // Calculate dot products
             double dot00 = DotProduct(v0, v0);
@@ -328,6 +389,7 @@ namespace CVD
             double v = (dot00 * dot12 - dot01 * dot02) * invDenom;
 
             // Check if point is in rectangle
+            //Debug.WriteLine(u + ' ' + v);
             return (u >= 0) && (v >= 0) && (u <= 1) && (v <= 1);
         }
 
