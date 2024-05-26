@@ -19,6 +19,7 @@ namespace CVD
         private readonly TextBox zAngleTextBox = new();
         private readonly TextBox scaleBox = new();
         private readonly Button applyButton = new();
+        private readonly CheckBox checkBox = new();
 
         private readonly Graphics graphicsContext;
         private readonly PictureBox canvasBox = new();
@@ -33,21 +34,16 @@ namespace CVD
             canvasBox.Location = new Point(0, 0);
             Controls.Add(canvasBox);
 
-            PictureBox box = new PictureBox();
-            box.Size = new Size(100, 100);
-            box.Location = new Point(0, 0);
-            box.Image = new Bitmap(100, 100);
-            Controls.Add(box);
             Bitmap image = (Bitmap)canvasBox.Image;
             graphicsContext = Graphics.FromImage(image);
 
             Label xAngleLabel = new();
             Label yAngleLabel = new();
             Label zAngleLabel = new();
+            Label textBoxLabel = new();
             Label scaleLabel = new();
 
             SetUpLabel(xAngleLabel, "X Angle", 0);
-            xAngleTextBox.Location = new Point(200, 200);
             Controls.Add(xAngleTextBox);
 
             SetUpLabel(xAngleLabel, "X Angle", 0);
@@ -62,26 +58,29 @@ namespace CVD
             SetUpLabel(scaleLabel, "Scale", 3);
             SetUpTextBox(scaleBox, 3);
 
-            SetUpButton(applyButton, "Apply", 4);
+            SetUpLabel(textBoxLabel, "Show cells inside window (debug)", 4);
+            SetUpCheckBox(checkBox, 4);
+
+            SetUpButton(applyButton, "Apply", 5);
             Point3D basePoint = new(100,100,100);
             Point3D normalVector = new(1, 1, 1);
             Plane2D mainPlane = new(normalVector, basePoint);
+            Point3D[] corners = CalculatePlaneCorners(basePoint, normalVector, WIDTH, HEIGHT);
             
 
             // Set initial angles and hook up the event
             xAngleTextBox.Text = "0";
             yAngleTextBox.Text = "0";
             zAngleTextBox.Text = "0";
-            scaleBox.Text = "0.5";
+            scaleBox.Text = "1";
 
             List<Point3D> randomPointCloud = Point3DGenerator.GenerateRandomPoints(POINT_CLOUD_SIZE, WIDTH, HEIGHT); 
 
 
             diagram = CalculateVoronoiDiagram(randomPointCloud, mainPlane, normalVector, basePoint);
-            List<VoronoiCell3D> projectedDiagram = ApplyRotation(diagram, 0,0,0,.5f, mainPlane, normalVector, basePoint);
+            List<VoronoiCell3D> projectedDiagram = ApplyRotation(diagram, 0,0,0,1, mainPlane, normalVector, basePoint);
             DrawVoronoiCells(projectedDiagram);
             applyButton.Click += (o, e) => ApplyButton_Click(o, e, mainPlane, normalVector, basePoint, diagram);
-            //VoronoiProcess();
         }
 
         private void SetUpLabel(Label label, string labelText, int rowNumber)
@@ -94,6 +93,15 @@ namespace CVD
             canvasBox.Controls.Add(label);
         }
 
+        private void SetUpCheckBox(CheckBox checkBox, int rowNumber)
+        {
+            int rowHeight = 30;
+            checkBox.Location = new(10, rowHeight * rowNumber + 10);
+            checkBox.AutoSize = true;
+            checkBox.BackColor = Color.Transparent;
+            canvasBox.Controls.Add(checkBox);
+        }
+
         private void ApplyButton_Click(object? sender, EventArgs e, Plane2D mainPlane, Point3D normalVector, Point3D basePoint, List<VoronoiCell3D> voronoiCells)
         {
             if (float.TryParse(xAngleTextBox.Text, out float angleX) &&
@@ -101,11 +109,10 @@ namespace CVD
                 float.TryParse(zAngleTextBox.Text, out float angleZ) &&
                 float.TryParse(scaleBox.Text, out float scale))
             {
-
                 graphicsContext.Clear(canvasBox.BackColor);
-               
                 List<VoronoiCell3D> rotatedCells = ApplyRotation(voronoiCells, angleX, angleY, angleZ, scale, mainPlane, normalVector, basePoint);
                 DrawVoronoiCells(rotatedCells);
+                
                 canvasBox.Refresh();
             }
             else
@@ -118,20 +125,25 @@ namespace CVD
         {
             Func<Point3D, Point3D> rotate = (p) =>
             {
-                float radX = angleX * (float)Math.PI / 180;
-                float radY = angleY * (float)Math.PI / 180;
-                float radZ = angleZ * (float)Math.PI / 180;
+                Vector3 point = new((float)p.X, (float)p.Y, (float)p.Z);
+                float radiansX = MathF.PI * angleX / 180f;
+                float radiansY = MathF.PI * angleY / 180f;
+                float radiansZ = MathF.PI * angleZ / 180f;
 
-                double y1 = p.Y * (float)Math.Cos(radX) - p.Z * (float)Math.Sin(radX);
-                double z1 = p.Y * (float)Math.Sin(radX) + p.Z * (float)Math.Cos(radX);
+                // Create the rotation matrices for each axis
+                Matrix4x4 rotationX = Matrix4x4.CreateRotationX(radiansX);
+                Matrix4x4 rotationY = Matrix4x4.CreateRotationY(radiansY);
+                Matrix4x4 rotationZ = Matrix4x4.CreateRotationZ(radiansZ);
 
-                double x2 = p.X * (float)Math.Cos(radY) + z1 * (float)Math.Sin(radY);
-                double z2 = -p.X * (float)Math.Sin(radY) + z1 * (float)Math.Cos(radY);
+                // Combine the rotations
+                Matrix4x4 combinedRotation = rotationZ * rotationY * rotationX;
 
-                double x3 = x2 * (float)Math.Cos(radZ) - y1 * (float)Math.Sin(radZ);
-                double y3 = x2 * (float)Math.Sin(radZ) + y1 * (float)Math.Cos(radZ);
+                // Create the scaling matrix
+                Matrix4x4 scaleMatrix = Matrix4x4.CreateScale(scale);
 
-                return new Point3D(x3, y3, z2);
+                Vector3 scaledPoint = Vector3.Transform(point, scaleMatrix);
+                Vector3 value = Vector3.Transform(scaledPoint, combinedRotation);
+                return new(value.X, value.Y, value.Z);
             };
 
             Func<Point3D, Point3D> project = (p) =>
@@ -141,6 +153,7 @@ namespace CVD
                 return new(x, y, 0);
             };
 
+            DrawPlane(normalVector, basePoint, rotate, project);
             return ProjectVoronoiCellsOnPlane(mainPlane, basePoint, rotate, project, normalVector, voronoiCells);
         }
 
@@ -180,15 +193,20 @@ namespace CVD
 
         private List<VoronoiCell3D> ProjectVoronoiCellsOnPlane(Plane2D plane, Point3D basePoint, Func<Point3D, Point3D> rotate, Func<Point3D, Point3D> project, Point3D normalVector, List<VoronoiCell3D> voronoiCells)
         {
-            Point3D[] corners = CalculatePlaneCorners(basePoint, normalVector, 10f, 10f);
+            Point3D[] corners = CalculatePlaneCorners(basePoint, normalVector, WIDTH, HEIGHT);
+            Debug.WriteLine(corners[0].ToString() + " " + corners[1].ToString() + " " + corners[2].ToString() + " " + corners[3].ToString());
+
             Function planeEquation = plane.equation;
             
             List<VoronoiCell3D> projectedCells = new();
             
             foreach (VoronoiCell3D voronoiCell in voronoiCells)
             {
-                VoronoiCell3D projectedCell = ProjectVoronoiCell(basePoint, normalVector, corners, rotate, project, voronoiCell); 
-                projectedCells.Add(projectedCell);
+                VoronoiCell3D? projectedCell = ProjectVoronoiCell(basePoint, normalVector, corners, rotate, project, voronoiCell);
+                if (projectedCell != null)
+                {
+                    projectedCells.Add(projectedCell);
+                }
             }
 
             DrawAxis(project, rotate, Color.Red, new Point3D(-500, 0, 0), new Point3D(500, 0, 0), "X");
@@ -199,7 +217,7 @@ namespace CVD
             return projectedCells;
         }
 
-        private VoronoiCell3D ProjectVoronoiCell(Point3D basePoint, Point3D normalVector, Point3D[] corners, Func<Point3D, Point3D> rotate, Func<Point3D, Point3D> project, VoronoiCell3D voronoiCell)
+        private VoronoiCell3D? ProjectVoronoiCell(Point3D basePoint, Point3D normalVector, Point3D[] corners, Func<Point3D, Point3D> rotate, Func<Point3D, Point3D> project, VoronoiCell3D voronoiCell)
         {
             Point3D center = voronoiCell.getCenter();
             List<Edge3D> edges = voronoiCell.GetEdges();
@@ -207,42 +225,204 @@ namespace CVD
             List<Edge3D> projectedEdges = new();
             foreach (Edge3D edge in edges)
             {
-                Edge3D projectedEdge = ProjectVoronoiEdge(basePoint, normalVector, corners, rotate, project, edge);
-                projectedEdges.Add(projectedEdge);
+                ProjectedEdge? projectedEdge = ProjectVoronoiEdge(basePoint, normalVector, corners, rotate, project, edge);
+                if (projectedEdge == null)
+                {
+                    continue;
+                }
+
+                if (projectedEdge.InScreenEdge != null)
+                {
+                    projectedEdges.Add(projectedEdge.InScreenEdge);
+                } 
+
+                if (projectedEdge.OutScreenEdge != null)
+                {
+                    projectedEdges.Add(projectedEdge.OutScreenEdge);
+                }
             }
 
-            Point3D projectedCenter = ProjectPoint(basePoint, normalVector, corners, rotate, project, center);
-
-            return new(projectedCenter, projectedEdges);
+            Point3D projectedCenter = RotatePoint(basePoint, normalVector, corners, rotate, project, center);
+            
+             return new(project(projectedCenter), projectedEdges);
+          
         }
 
-        private Point3D ProjectPoint(Point3D basePoint, Point3D normalVector, Point3D[] corners, Func<Point3D, Point3D> rotate, Func<Point3D, Point3D> project, Point3D pointToProject)
+        private bool IsPointInsideRectangle(Point3D p, Point3D[] corners)
+        {
+            // Project the point and corners onto the xy-plane
+            PointF projectedP = new PointF((float)p.X, (float) p.Y);
+            PointF[] projectedCorners = new PointF[]
+            {
+            new PointF((float) corners[0].X, (float) corners[0].Y),
+            new PointF((float) corners[1].X, (float) corners[1].Y),
+            new PointF((float) corners[2].X, (float) corners[2].Y),
+            new PointF((float) corners[3].X, (float) corners[3].Y)
+            };
+
+            // Calculate vectors from corners
+            Vector2 v0 = new Vector2(projectedCorners[3].X - projectedCorners[0].X, projectedCorners[3].Y - projectedCorners[0].Y);
+            Vector2 v1 = new Vector2(projectedCorners[1].X - projectedCorners[0].X, projectedCorners[1].Y - projectedCorners[0].Y);
+            Vector2 v2 = new Vector2(projectedP.X - projectedCorners[0].X, projectedP.Y - projectedCorners[0].Y);
+
+            // Calculate dot products
+            float dot00 = DotProduct(v0, v0);
+            float dot01 = DotProduct(v0, v1);
+            float dot02 = DotProduct(v0, v2);
+            float dot11 = DotProduct(v1, v1);
+            float dot12 = DotProduct(v1, v2);
+
+            // Compute barycentric coordinates
+            float invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+            float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+            float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+
+            // Check if point is in rectangle
+            return (u >= 0) && (v >= 0) && (u <= 1) && (v <= 1);
+        }
+
+        private float DotProduct(Vector2 a, Vector2 b)
+        {
+            return a.X * b.X + a.Y * b.Y;
+        }
+
+        private Point3D RotatePoint(Point3D basePoint, Point3D normalVector, Point3D[] corners, Func<Point3D, Point3D> rotate, Func<Point3D, Point3D> project, Point3D pointToProject)
         {
             double z = (normalVector.X * (pointToProject.X - basePoint.X) + normalVector.Y * (pointToProject.Y - basePoint.Y)) / -normalVector.Z + basePoint.Z;
             Point3D p = new(pointToProject.X, pointToProject.Y, z);
-            Point3D projectedPoint = project(rotate(p));
-            return projectedPoint;
+            Point3D rotatedPoint = rotate(p);
+
+            return rotatedPoint;
         }
 
-        private Edge3D ProjectVoronoiEdge(Point3D basePoint, Point3D normalVector, Point3D[] corners, Func<Point3D, Point3D> rotate, Func<Point3D, Point3D> project, Edge3D edgeToProject)
+        private ProjectedEdge? ProjectVoronoiEdge(Point3D basePoint, Point3D normalVector, Point3D[] corners, Func<Point3D, Point3D> rotate, Func<Point3D, Point3D> project, Edge3D edgeToProject)
         {
             Point3D start = edgeToProject.startingPoint;
             Point3D end = edgeToProject.endingPoint;
 
+            Point3D rotatedStart = RotatePoint(basePoint, normalVector, corners, rotate, project, start);
+            Point3D rotatedEnd = RotatePoint(basePoint, normalVector, corners, rotate, project, end);
 
-            Point3D projectedStart = ProjectPoint(basePoint, normalVector, corners, rotate, project, start);
-            Point3D projectedEnd = ProjectPoint(basePoint, normalVector, corners, rotate, project, end);
+            bool isStartInRectangle = IsPointInsideRectangle(rotatedStart, corners);
+            bool isEndInRectangle = IsPointInsideRectangle(rotatedEnd, corners);
 
-            return new(projectedStart, projectedEnd);
+            if (isStartInRectangle && isEndInRectangle)
+            {
+                return new(new(project(rotatedStart), project(rotatedEnd)), null);
+
+            }
+
+            if (!isStartInRectangle && !isEndInRectangle)
+            {
+                return new(null, new(project(rotatedStart), project(rotatedEnd)));
+            }
+
+            if (!isStartInRectangle) // end is contained within the rectangle
+            {
+                Point3D unprojectedRotatedStart = rotatedStart;
+                return new(new(project(rotatedEnd), project(rotatedEnd)),
+                    new(project(rotatedEnd), project(unprojectedRotatedStart)));  
+            }
+
+            if (!isEndInRectangle) // start is contained within the rectangle
+            {
+                Point3D unprojectedRotatedEnd = rotatedEnd;
+                return new(new(project(rotatedStart), project(rotatedEnd)), new(project(rotatedEnd), project(unprojectedRotatedEnd)));
+            }
+
+            return null;
+        }
+
+        private Point3D FindIntersection(Point3D lineStart, Point3D lineEnd, Point3D edgeStart, Point3D edgeEnd)
+        {
+            Vector2 lineDir = new Vector2((float) (lineEnd.X - lineStart.X), ((float)(lineEnd.Y - lineStart.Y)));
+            Vector2 edgeDir = new Vector2((float)(edgeEnd.X - edgeStart.X), (float)(edgeEnd.Y - edgeStart.Y));
+            Vector2 lineToEdgeStart = new Vector2((float)(edgeStart.X - lineStart.X), ((float)(edgeStart.Y - lineStart.Y)));
+
+            float a = DotProduct(lineDir, lineDir);
+            float b = DotProduct(lineDir, edgeDir);
+            float e = DotProduct(edgeDir, edgeDir);
+            float d = a * e - b * b;
+
+            if (Math.Abs(d) < 1e-6)
+            {
+                // Lines are parallel
+                return null;
+            }
+
+            float c = DotProduct(lineDir, lineToEdgeStart);
+            float f = DotProduct(edgeDir, lineToEdgeStart);
+
+            float t = (b * f - c * e) / d;
+            float u = (a * f - b * c) / d;
+
+            if (t < 0 || t > 1 || u < 0 || u > 1)
+            {
+                // Intersection point is not within the line segment or the edge
+                return null;
+            }
+
+            return new Point3D(
+                lineStart.X + t * lineDir.X,
+                lineStart.Y + t * lineDir.Y,
+                0
+            );
+        }
+
+        private Point3D? GetIntersectionPoint(Point3D lineStart, Point3D lineEnd, Point3D[] corners)
+        {
+            Point3D? closestIntersection = null;
+            double minDistance = double.MaxValue;
+
+            var edges = new[]
+            {
+        new { Start = corners[0], End = corners[1] },
+        new { Start = corners[1], End = corners[2] },
+        new { Start = corners[2], End = corners[3] },
+        new { Start = corners[3], End = corners[0] }
+    };
+
+            foreach (var edge in edges)
+            {
+                Point3D intersection = FindIntersection(lineStart, lineEnd, edge.Start, edge.End);
+
+                if (intersection != null)
+                {
+                    double distance = GetDistance(lineStart, intersection);
+
+                    if (distance < minDistance)
+                    {
+                        minDistance = distance;
+                        closestIntersection = intersection;
+                    }
+                }
+            }
+
+            return closestIntersection;
+        }
+
+        private double GetDistance(Point3D point1, Point3D point2)
+        {
+            return Math.Sqrt(
+                Math.Pow(point1.X - point2.X, 2) +
+                Math.Pow(point1.Y - point2.Y, 2) +
+                Math.Pow(point1.Z - point2.Z, 2)
+            );
+        }
+
+
+        private double DistanceSquared(Point3D p1, Point3D p2)
+        {
+            return (p1.X - p2.X) * (p1.X - p2.X) + (p1.Y - p2.Y) * (p1.Y - p2.Y) + (p1.Z - p2.Z) * (p1.Z - p2.Z);
         }
 
         private void DrawPlane(Point3D normal, Point3D point, Func<Point3D, Point3D> rotate, Func<Point3D, Point3D> project)
         {
             Point3D[] corners = CalculatePlaneCorners(point, normal, WIDTH, HEIGHT);
-
             Plane2D plane = new(normal, point);
 
-            
+            Debug.WriteLine(corners[0].ToString() + " " + corners[1].ToString() + " " + corners[2].ToString() + " " + corners[3].ToString());
+            Debug.WriteLine(IsPointInsideRectangle(new(400,200, 0), corners));
 
             Color semiTransparentColor = Color.FromArgb(50, Color.LightBlue);
             Brush semiTransparentBrush = new SolidBrush(semiTransparentColor);
@@ -293,10 +473,10 @@ namespace CVD
             // Calculate corners
             return new Point3D[]
             {
-            new(center.X + v1.X + v2.X, center.Y + v1.Y + v2.Y, center.Z + v1.Z + v2.Z),
-            new(center.X + v1.X - v2.X, center.Y + v1.Y - v2.Y, center.Z + v1.Z - v2.Z),
-            new(center.X - v1.X - v2.X, center.Y - v1.Y - v2.Y, center.Z - v1.Z - v2.Z),
-            new(center.X - v1.X + v2.X, center.Y - v1.Y + v2.Y, center.Z - v1.Z + v2.Z)
+            new(center.X + v1.X + v2.X, center.Y + v1.Y + v2.Y, 0),
+            new(center.X + v1.X - v2.X, center.Y + v1.Y - v2.Y, 0),
+            new(center.X - v1.X - v2.X, center.Y - v1.Y - v2.Y, 0),
+            new(center.X - v1.X + v2.X, center.Y - v1.Y + v2.Y, 0)
             };
         }
 
@@ -325,36 +505,35 @@ namespace CVD
             Point3D startProjected = project(rotate(start));
             Point3D endProjected = project(rotate(end));
 
+
             Point s = new((int)startProjected.X, (int)startProjected.Y);
             Point e = new((int)endProjected.X, (int)endProjected.Y);
-            graphicsContext.DrawLine(new Pen(color, 2), s,e);
+            graphicsContext.DrawLine(new Pen(color, 2), s, e);
 
             DrawAxisLabel(project, rotate, color, start, axisName);
             DrawAxisLabel(project, rotate, color, end, axisName);
 
-            int interval = 100; // Define interval for the labels
-            for (int i = (int)start.X+interval; i < end.X - interval; i += interval)
+            int interval = 100;
+            for (int i = (int) (start.X  + interval); i <= end.X - interval; i += interval)
             {
                 if (axisName == "X")
                     DrawAxisLabel(project, rotate, color, new Point3D(i, start.Y, start.Z), i.ToString());
             }
-            for (int i = (int)start.Y + interval; i < end.Y - interval; i += interval)
+            for (int i = (int) (start.Y  + interval); i <= end.Y - interval; i += interval)
             {
                 if (axisName == "Y")
                     DrawAxisLabel(project, rotate, color, new Point3D(start.X, i, start.Z), i.ToString());
             }
-            for (int i = (int)start.Z + interval; i <= end.Z - interval; i += interval)
+            for (int i = (int)(start.Z + interval); i <= end.Z - interval; i += interval)
             {
                 if (axisName == "Z")
-                    DrawAxisLabel(project, rotate, color, new Point3D(start.X, start.Y, i), i.ToString());
+                   DrawAxisLabel(project, rotate, color, new Point3D(start.X, start.Y, i), i.ToString());
             }
         }
 
         private void DrawAxisLabel(Func<Point3D, Point3D> project, Func<Point3D, Point3D> rotate, Color color, Point3D position, string labelValue)
         {
             Point3D projectedPosition = project(rotate(position));
-            Debug.WriteLine(projectedPosition.X + " " + projectedPosition.Y);
-                
             Point pos = new((int)projectedPosition.X, (int)projectedPosition.Y);
 
             graphicsContext.DrawString(labelValue, new Font("Arial", 8), new SolidBrush(color), pos);
@@ -551,7 +730,7 @@ namespace CVD
             Pen pen = new(Color.Brown);
             Brush pointPen = new SolidBrush(Color.Black);
             foreach (VoronoiCell3D cell in voronoiCells)
-            {             
+            {
                 DrawVoronoiCell(pen, pointPen, cell);
             }
         }
@@ -566,6 +745,37 @@ namespace CVD
             }
 
             Draw3DPoint(pointPen, cell.getCenter());
+        }
+
+        private class ProjectedEdge
+        {
+            public readonly Edge3D? InScreenEdge;
+            public readonly Edge3D? OutScreenEdge;
+
+            public ProjectedEdge(Edge3D? inScreenEdge, Edge3D? outScreenEdge)
+            {
+                InScreenEdge = inScreenEdge;
+                OutScreenEdge = outScreenEdge;
+            }
+        }
+
+        private class Line
+        {
+            public readonly Point3D p1;
+            public readonly Point3D p2;
+
+            public readonly Vector3 equation;
+
+            public Line(Point3D point1, Point3D point2)
+            {
+                p1 = point1;
+                p2 = point2;
+                Vector2 vec = new((float)Math.Abs(p1.X - p2.X), (float)Math.Abs(p1.Y - p2.Y));
+                Vector2 normal = new(-vec.X, vec.Y);
+
+                float c = (float)(-normal.X * p1.X - normal.Y * p1.Y);
+                equation = new(normal.X, normal.Y, c);
+            }
         }
     }
 }
