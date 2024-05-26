@@ -194,7 +194,7 @@ namespace CVD
             DrawAxis(project, rotate, Color.Red, new Point3D(-500, 0, 0), new Point3D(500, 0, 0), "X");
             DrawAxis(project, rotate, Color.Green, new Point3D(0, -500, 0), new Point3D(0, 500, 0), "Y");
             DrawAxis(project, rotate, Color.Blue, new Point3D(0, 0, -500), new Point3D(0, 0, 500), "Z");
-            DrawPlane(normalVector, basePoint, rotate, project);
+            //DrawPlane(normalVector, basePoint, rotate, project);
 
             return projectedCells;
         }
