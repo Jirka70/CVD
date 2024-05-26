@@ -58,10 +58,7 @@ namespace CVD
             SetUpLabel(scaleLabel, "Scale", 3);
             SetUpTextBox(scaleBox, 3);
 
-            SetUpLabel(textBoxLabel, "Show cells inside window (debug)", 4);
-            SetUpCheckBox(checkBox, 4);
-
-            SetUpButton(applyButton, "Apply", 5);
+            SetUpButton(applyButton, "Apply", 4);
             Point3D basePoint = new(100,100,100);
             Point3D normalVector = new(1, 1, 1);
             Plane2D mainPlane = new(normalVector, basePoint);
@@ -130,15 +127,12 @@ namespace CVD
                 float radiansY = MathF.PI * angleY / 180f;
                 float radiansZ = MathF.PI * angleZ / 180f;
 
-                // Create the rotation matrices for each axis
                 Matrix4x4 rotationX = Matrix4x4.CreateRotationX(radiansX);
                 Matrix4x4 rotationY = Matrix4x4.CreateRotationY(radiansY);
                 Matrix4x4 rotationZ = Matrix4x4.CreateRotationZ(radiansZ);
 
-                // Combine the rotations
                 Matrix4x4 combinedRotation = rotationZ * rotationY * rotationX;
 
-                // Create the scaling matrix
                 Matrix4x4 scaleMatrix = Matrix4x4.CreateScale(scale);
 
                 Vector3 scaledPoint = Vector3.Transform(point, scaleMatrix);
@@ -250,7 +244,6 @@ namespace CVD
 
         private bool IsPointInsideRectangle(Point3D p, Point3D[] corners)
         {
-            // Project the point and corners onto the xy-plane
             PointF projectedP = new PointF((float)p.X, (float) p.Y);
             PointF[] projectedCorners = new PointF[]
             {
@@ -260,24 +253,20 @@ namespace CVD
             new PointF((float) corners[3].X, (float) corners[3].Y)
             };
 
-            // Calculate vectors from corners
             Vector2 v0 = new Vector2(projectedCorners[3].X - projectedCorners[0].X, projectedCorners[3].Y - projectedCorners[0].Y);
             Vector2 v1 = new Vector2(projectedCorners[1].X - projectedCorners[0].X, projectedCorners[1].Y - projectedCorners[0].Y);
             Vector2 v2 = new Vector2(projectedP.X - projectedCorners[0].X, projectedP.Y - projectedCorners[0].Y);
 
-            // Calculate dot products
             float dot00 = DotProduct(v0, v0);
             float dot01 = DotProduct(v0, v1);
             float dot02 = DotProduct(v0, v2);
             float dot11 = DotProduct(v1, v1);
             float dot12 = DotProduct(v1, v2);
 
-            // Compute barycentric coordinates
             float invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
             float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
             float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
 
-            // Check if point is in rectangle
             return (u >= 0) && (v >= 0) && (u <= 1) && (v <= 1);
         }
 
