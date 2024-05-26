@@ -153,7 +153,7 @@ namespace CVD
                 return new(x, y, 0);
             };
 
-            DrawPlane(normalVector, basePoint, rotate, project);
+            //DrawPlane(normalVector, basePoint, rotate, project);
             return ProjectVoronoiCellsOnPlane(mainPlane, basePoint, rotate, project, normalVector, voronoiCells);
         }
 
