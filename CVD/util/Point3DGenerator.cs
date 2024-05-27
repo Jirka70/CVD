@@ -6,7 +6,7 @@ namespace CVD.util
     internal class Point3DGenerator
     {
         private static readonly Random RANDOM = new Random();
-        private static readonly int Z_MAX_BOUND = 1000;
+        private static readonly int Z_MAX_BOUND = 0;
 
         private static Point3D GenerateRandomPoint(int windowWidth, int windowHeight)
         {
